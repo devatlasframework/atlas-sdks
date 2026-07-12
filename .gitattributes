@@ -1,0 +1,12 @@
+* text=auto
+*.sh text eol=lf
+.githooks/* text eol=lf
+*.py text eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary

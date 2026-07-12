@@ -1,0 +1,33 @@
+#!/bin/sh
+# ATLAS pre-commit hook: secret scan now; format/lint/quick tests as toolchains land.
+# Enable once per clone:  git config core.hooksPath .githooks
+
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$staged" ] && exit 0
+
+fail=0
+
+# --- 1. Secret scan (always on) ---------------------------------------------
+pattern='-----BEGIN [A-Z ]*PRIVATE KEY-----|AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|postgres(ql)?://[^/ :]+:[^@ ]+@'
+for f in $staged; do
+  case "$f" in
+    *.png|*.jpg|*.jpeg|*.gif|*.ico|*.pdf|*.zip|*.jar|*.woff|*.woff2|*.svg) continue ;;
+    .githooks/*|.claude/hooks/*) continue ;;
+  esac
+  if git show ":$f" | grep -nE "$pattern" >/dev/null 2>&1; then
+    echo "pre-commit: possible secret in $f — remove it before committing:" >&2
+    git show ":$f" | grep -nE "$pattern" | head -5 >&2
+    fail=1
+  fi
+done
+
+# --- 2. Format / lint / quick tests (activate as tooling lands) --------------
+# apps/web, apps/ai-worker : npx prettier --check + eslint on staged files
+# apps/api                 : ./mvnw spotless:check -q (changed modules)
+# apps/ingestion           : ruff format --check && ruff check (staged files)
+
+if [ $fail -ne 0 ]; then
+  echo "pre-commit: blocked. Fix the findings above (never use --no-verify)." >&2
+  exit 1
+fi
+exit 0

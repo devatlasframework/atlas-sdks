@@ -1,0 +1,20 @@
+#!/bin/sh
+# ATLAS commit-msg hook: enforce Conventional Commits.
+# Enable once per clone:  git config core.hooksPath .githooks
+
+msg_file="$1"
+first_line=$(head -n1 "$msg_file")
+
+# Allow merges, reverts, and autosquash commits.
+case "$first_line" in
+  Merge\ *|Revert\ *|fixup!\ *|squash!\ *) exit 0 ;;
+esac
+
+if ! echo "$first_line" | grep -qE '^(feat|fix|docs|refactor|test|chore|perf|build|ci)(\([a-z0-9./-]+\))?!?: .{1,72}$'; then
+  echo "commit-msg: not a Conventional Commit." >&2
+  echo "  expected: type(scope): summary    e.g. feat(tutor): stream answers over SSE" >&2
+  echo "  types:    feat fix docs refactor test chore perf build ci" >&2
+  echo "  got:      $first_line" >&2
+  exit 1
+fi
+exit 0
