@@ -2,7 +2,13 @@
 # ATLAS pre-commit hook: secret scan now; format/lint/quick tests as toolchains land.
 # Enable once per clone:  git config core.hooksPath .githooks
 
-staged=$(git diff --cached --name-only --diff-filter=ACM)
+# Compare against HEAD, or the empty tree on the very first commit.
+if git rev-parse --verify HEAD >/dev/null 2>&1; then
+  against=HEAD
+else
+  against=$(git hash-object -t tree /dev/null)
+fi
+staged=$(git diff --cached --name-only --diff-filter=ACM "$against")
 [ -z "$staged" ] && exit 0
 
 fail=0
@@ -14,9 +20,9 @@ for f in $staged; do
     *.png|*.jpg|*.jpeg|*.gif|*.ico|*.pdf|*.zip|*.jar|*.woff|*.woff2|*.svg) continue ;;
     .githooks/*|.claude/hooks/*) continue ;;
   esac
-  if git show ":$f" | grep -nE "$pattern" >/dev/null 2>&1; then
-    echo "pre-commit: possible secret in $f — remove it before committing:" >&2
-    git show ":$f" | grep -nE "$pattern" | head -5 >&2
+  if git show ":$f" | grep -nE -e "$pattern" >/dev/null 2>&1; then
+    echo "pre-commit: possible secret in $f - remove it before committing:" >&2
+    git show ":$f" | grep -nE -e "$pattern" | head -5 >&2
     fail=1
   fi
 done

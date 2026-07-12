@@ -53,10 +53,10 @@ def main() -> int:
     for pattern, label in PATTERNS:
         for match in re.finditer(pattern, text):
             line = text.count("\n", 0, match.start()) + 1
-            findings.append(f"  {path.name}:{line} — looks like {label}")
+            findings.append(f"  {path.name}:{line} - looks like {label}")
     if findings:
         print(
-            "Possible secret in the working tree — replace it with an env-var name:",
+            "Possible secret in the working tree - replace it with an env-var name:",
             file=sys.stderr,
         )
         print("\n".join(sorted(set(findings))), file=sys.stderr)
