@@ -3,6 +3,12 @@
 **PUBLIC** client libraries for the ATLAS API (`/v1`): TypeScript, Python, Java. Everything
 here ships to public registries — write accordingly.
 
+The API's behaviour — auth (API keys / OAuth on-behalf), scopes, request checking, rate
+limits and quotas, webhooks (signatures, retries), idempotency keys, versioning — is
+specified in the architecture plan §11 (workspace `../docs/ATLAS_Platform_Architecture_Plan.md`).
+SDK ergonomics must reflect those semantics (e.g. expose idempotency keys, verify webhook
+signatures, surface rate-limit state).
+
 ## Rules
 
 - **Public repo:** no internal URLs or hostnames, no references to unreleased features, no
