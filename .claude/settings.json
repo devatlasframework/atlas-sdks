@@ -3,17 +3,13 @@
     "PreToolUse": [
       {
         "matcher": "Bash",
-        "hooks": [
-          { "type": "command", "command": "python .claude/hooks/guard_bash.py" }
-        ]
+        "hooks": [{ "type": "command", "command": "python .claude/hooks/guard_bash.py" }]
       }
     ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
-        "hooks": [
-          { "type": "command", "command": "python .claude/hooks/post_edit_check.py" }
-        ]
+        "hooks": [{ "type": "command", "command": "python .claude/hooks/post_edit_check.py" }]
       }
     ]
   }

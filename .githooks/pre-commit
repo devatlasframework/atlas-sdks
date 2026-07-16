@@ -27,10 +27,29 @@ for f in $staged; do
   fi
 done
 
-# --- 2. Format / lint / quick tests (activate as tooling lands) --------------
-# apps/web, apps/ai-worker : npx prettier --check + eslint on staged files
-# apps/api                 : ./mvnw spotless:check -q (changed modules)
-# apps/ingestion           : ruff format --check && ruff check (staged files)
+# --- 2. Fast format/lint checks on staged files ------------------------------
+# Kept fast on purpose: prettier + ruff only. Full eslint, tests, and the Maven
+# build run in CI (and via the /pre-commit-check command).
+
+# Prettier over staged TS/JS/JSON/YAML/MD (skips api + ingestion trees).
+pretty_files=$(echo "$staged" | grep -E '\.(ts|tsx|mjs|js|jsx|json|ya?ml|md|css)$' | grep -vE '^apps/(api|ingestion)/' || true)
+if [ -n "$pretty_files" ] && [ -d node_modules ] && command -v pnpm >/dev/null 2>&1; then
+  if ! echo "$pretty_files" | tr '\n' '\0' | xargs -0 pnpm exec prettier --check --ignore-unknown >/dev/null 2>&1; then
+    echo "pre-commit: prettier check failed - run 'pnpm format' and restage:" >&2
+    echo "$pretty_files" | tr '\n' '\0' | xargs -0 pnpm exec prettier --check --ignore-unknown 2>&1 | grep -v '^Checking' | head -10 >&2
+    fail=1
+  fi
+fi
+
+# Ruff (lint + format) when ingestion Python files are staged.
+py_staged=$(echo "$staged" | grep -E '^apps/ingestion/.*\.py$' || true)
+if [ -n "$py_staged" ] && command -v uv >/dev/null 2>&1; then
+  if ! (cd apps/ingestion && uv run ruff check . && uv run ruff format --check .) >/dev/null 2>&1; then
+    echo "pre-commit: ruff failed in apps/ingestion:" >&2
+    (cd apps/ingestion && { uv run ruff check . 2>&1; uv run ruff format --check . 2>&1; } | head -8 >&2)
+    fail=1
+  fi
+fi
 
 if [ $fail -ne 0 ]; then
   echo "pre-commit: blocked. Fix the findings above (never use --no-verify)." >&2
