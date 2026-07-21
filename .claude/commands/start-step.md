@@ -76,8 +76,11 @@ verify the acceptance criteria live), citing the step's **Governing** spec secti
 user approves the plan, implement it and run the rest of the documented flow: `/write-tests` ·
 `/pre-commit-check` · independent review (the `reviewer` / `security-reviewer` agents, or the
 built-in `/code-review` if the agents aren't in this repo) · `/commit-message` · **wait for the
-user's commit approval** · `/mr-description` · open the PR · merge on green CI + user approval ·
-Dev smoke. The Definition of Done and gates are in `CONTRIBUTING.md`.
+user's commit approval** · `/mr-description` · open the PR · **`/verify-step`** (live
+acceptance verification against a real stack — plan the checks, run them, separate
+implementation bugs from verification-process issues; the DoD's "acceptance criteria verified
+live" gate) · merge on green CI + user approval · Dev smoke. The Definition of Done and gates
+are in `CONTRIBUTING.md`.
 
 **Summary to print before step 6:** the resolved step, the created issue (`ATLAS-<N>`), and the
 branch name — so the user can confirm the front-half is correct before any code is written.
