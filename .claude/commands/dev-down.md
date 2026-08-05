@@ -39,7 +39,7 @@ deliberate clean-slate rebuild. Both are rare, and both deserve to be asked for 
 
 2. **Stop the cluster.**
 
-   ```
+   ```bash
    k3d cluster stop atlas
    ```
 
@@ -49,7 +49,7 @@ deliberate clean-slate rebuild. Both are rare, and both deserve to be asked for 
 3. **If `$ARGUMENTS` is `docker`** — quit Docker Desktop too. This is the real memory win: the
    WSL VM keeps its allocation while Docker runs, whether or not containers are up.
 
-   ```
+   ```powershell
    Stop-Process -Name 'Docker Desktop' -ErrorAction SilentlyContinue
    ```
 
@@ -59,7 +59,7 @@ deliberate clean-slate rebuild. Both are rare, and both deserve to be asked for 
 4. **If `$ARGUMENTS` is `delete`** — confirm first, in one line, that this means a full
    redeploy plus re-applying secrets. On a clear yes:
 
-   ```
+   ```bash
    bash atlas-infra/scripts/cluster.sh down
    ```
 

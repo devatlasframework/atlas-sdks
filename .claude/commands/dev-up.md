@@ -14,7 +14,7 @@ finish line — the finish line is an HTTP 200 from the ingress and the right im
 Never start blindly; find out which layer is actually down, because each has a different fix
 and the wrong one wastes minutes:
 
-```
+```bash
 docker ps                      # engine
 k3d cluster list               # does the cluster EXIST, and is it running?
 kubectl get nodes              # is the API server reachable?
@@ -33,7 +33,7 @@ Report the layer that is down. The usual causes, in order of likelihood:
 If `docker ps` fails, check whether the process is running
 (`Get-Process 'Docker Desktop'`). If not, launch it:
 
-```
+```powershell
 Start-Process "$env:ProgramFiles\Docker\Docker\Docker Desktop.exe"
 ```
 
@@ -47,7 +47,7 @@ the engine serves: there is a window where the pipe exists and every call return
 `500 Internal Server Error`, and a readiness check that only tests the pipe will call it up
 too early.
 
-```
+```bash
 until docker ps >/dev/null 2>&1; do sleep 5; done
 ```
 
@@ -72,7 +72,7 @@ PowerShell is WSL, which cannot see the Windows k3d binary or its Docker context
 
 ## 4. Wait for the workloads
 
-```
+```bash
 kubectl wait --for=condition=Available --timeout=600s deployment --all -n atlas-dev
 ```
 
