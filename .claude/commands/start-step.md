@@ -29,6 +29,14 @@ If the step id is not found, **stop** and tell the user. Quote the step's **Titl
 agree on scope. If it is a release step (`REL`), follow `CONTRIBUTING.md` stages 6–8 instead of
 this command.
 
+**Then sanity-check the block against reality** — the plan is a living document and a block can
+go stale as earlier steps land: any **ticket numbers it references** (carried follow-ups,
+cross-step notes) may already be closed or resolved; a `Depends on` step may have been reworked
+or renumbered; the stated scope may no longer match the **Governing** spec sections. Skim those
+now — `gh issue view <n>` for referenced tickets, the governing spec for scope — and note any
+**drift** to the user. This is just a read here; the fix (if any) happens on the branch in step
+5.5, so it ships with this step's PR instead of lingering as a silent divergence.
+
 ## 2. Resolve the target repo (the ATLAS-21 failure)
 
 Work out the step's target repo from its **Repo** field and map it to a git repo: anything like
@@ -69,6 +77,18 @@ work present on develop). If a dependency looks unmet, **flag it** to the user b
   (feat→`feature`, docs→`docs`, chore→`chore`, fix→`bugfix`) and `<slug>` is a short kebab-case
   of the title. Confirm you are on it.
 
+## 5.5 Reconcile plan drift back into the plan (only if step 1 found any)
+
+If the accuracy check in step 1 surfaced drift, fix `atlas/docs/IMPLEMENTATION_PLAN.md`
+**now, on the branch you just cut**, so the correction ships with this step's PR rather than
+lingering — the plan is the durable source of truth every future session reads. Keep it a
+**note the user confirms**, never an automatic rewrite: show the exact edit (e.g. mark a
+carried follow-up _resolved in ATLAS-NN_, correct a `Depends on`, realign scope wording with
+the governing spec), get their nod, then write it. Mirror the plan's own in-place style — the
+`Delivered (…)` / `Resolved in …` inline notes A5/A9/B10/B12 use. If the block was already
+accurate, say so and change nothing. (Substantive plan _content_ for the step's own work still
+lands in step 6; this is only reconciling drift the block already had before you started.)
+
 ## 6. Hand off to implementation
 
 Now enter **plan mode** and propose the implementation for the step (files, approach, how you'll
@@ -79,8 +99,23 @@ built-in `/code-review` if the agents aren't in this repo) · `/commit-message` 
 user's commit approval** · `/mr-description` · open the PR · **`/verify-step`** (live
 acceptance verification against a real stack — plan the checks, run them, separate
 implementation bugs from verification-process issues; the DoD's "acceptance criteria verified
-live" gate) · merge on green CI + user approval · Dev smoke. The Definition of Done and gates
-are in `CONTRIBUTING.md`.
+live" gate). Then close out **in order**:
+
+1. **Ask the user to merge, and wait for their explicit consent.** Green CI + a passed
+   `/verify-step` are necessary, not sufficient — never merge on your own initiative. Surface
+   the PR, the CI state, and the verification result, then stop for the user's go-ahead.
+2. **On consent, merge to `develop`** (merge on green CI only) and sync/close out (issue,
+   local `develop`, delete the branch).
+3. **Dev smoke** once CD lands the merge on `atlas-dev`: confirm the new image SHA is running
+   and the step's key behaviour actually works there (not just that pods are up).
+4. **If the step is visible in the browser UI, hand the user a detailed, numbered
+   click-through guide** to exercise the feature themselves in the running app — name the exact
+   environment/host to open (Dev, or local), and for each step give the screen, the control to
+   click, the data to enter, and the concrete result to expect. Make it copy-followable with no
+   guesswork. Skip this **only** when the change has no user-visible surface (pure API/infra/
+   migration) — say so explicitly rather than omitting it silently.
+
+The Definition of Done and gates are in `CONTRIBUTING.md`.
 
 **Summary to print before step 6:** the resolved step, the created issue (`ATLAS-<N>`), and the
 branch name — so the user can confirm the front-half is correct before any code is written.
