@@ -1,4 +1,4 @@
-# atlas-sdk (TypeScript)
+# ATLAS SDK (TypeScript)
 
 TypeScript SDK for the ATLAS /v1 API. Planned: TS strict, ESM.
 

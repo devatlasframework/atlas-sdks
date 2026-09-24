@@ -1,4 +1,4 @@
-# atlas-sdk (Python)
+# ATLAS SDK (Python)
 
 Python SDK for the ATLAS /v1 API. Planned: fully typed, ruff-clean.
 

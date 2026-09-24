@@ -1,4 +1,4 @@
-# atlas-sdk (Java)
+# ATLAS SDK (Java)
 
 Java SDK for the ATLAS /v1 API. Planned: Java 17+ compatible.
 
