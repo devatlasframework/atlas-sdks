@@ -1,0 +1,20 @@
+# gitleaks' default rules, with one allowance.
+#
+# scenarios/fixtures/webhook-delivery-dev.json is a delivery captured from ATLAS's real webhook
+# sender, and it holds the signing secret of the endpoint it was sent to. That endpoint lived on a
+# development environment and was deleted as soon as the delivery was captured, so the secret
+# verifies nothing any more. It is here because the SDKs' webhook verifiers are tested against real
+# sender output, never against output they signed themselves.
+#
+# The allowance is that ONE value, not the file: a fixture refreshed from another environment
+# would carry a different secret, and that one still fails the scan.
+
+title = "atlas-sdks"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "The signing secret of a development webhook endpoint deleted after the fixture was captured"
+regexTarget = "match"
+regexes = ['''whsec_LrAQaR3QfRCE6cxRweZdkmltWeyUupOr4PeMOsfqwrQ''']

@@ -14,12 +14,10 @@ __pycache__/
 *.egg-info/
 build/
 
-# Java
-target/
-.gradle/
-*.class
+# Live-suite output: transcripts of calls to a deployed API
+live-results/
 
-# Env & IDE
+# Env & IDE (.env.* covers typescript/.env.live, where the live suite's credentials go)
 .env
 .env.*
 !.env.example

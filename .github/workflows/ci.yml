@@ -8,7 +8,8 @@ on:
 permissions:
   contents: read
 
-# Per-SDK build/test jobs join here when the SDKs are scaffolded.
+# Every job runs on every change, with no path filter: each is to be a required check, and a required
+# check that never reports blocks the merge.
 jobs:
   gitleaks:
     name: gitleaks
@@ -17,9 +18,64 @@ jobs:
       contents: read
       pull-requests: write # the action reads PR commits and comments findings
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # The contract every SDK is generated from: the vendored copy is the one its stamp names, and the
+  # surface derived from it is current. Language-neutral, so it gates every SDK at once.
+  contract:
+    name: contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tools/package-lock.json
+      - run: npm ci
+        working-directory: tools
+      - name: The vendored contract is the one its stamp names
+        run: node tools/verify-contract.mjs
+      - name: The derived surface is current
+        run: node tools/derive-surface.mjs --check
+
+  # The TypeScript SDK, on the oldest Node it promises and the current one. The live suite is not
+  # here: no environment has a public host, so it runs where the API does and its output is quoted
+  # in the pull request.
+  typescript:
+    name: typescript (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    defaults:
+      run:
+        working-directory: typescript
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: typescript/package-lock.json
+      - run: npm ci
+      - name: The generated code is what the surface generates
+        run: npm run generate:check
+      - name: Strict type-check
+        run: npm run typecheck
+      - name: Formatting
+        run: npm run format:check
+      - name: Unit tests, and the compile-time type tests
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: The README's promises - TS strict, ESM, Node 22+
+        run: npm run check:promises
+      - name: The packed tarball installs and imports as ESM
+        run: npm run smoke:pack
