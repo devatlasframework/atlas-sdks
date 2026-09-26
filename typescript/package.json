@@ -1,0 +1,48 @@
+{
+  "name": "@devatlasframework/sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TypeScript client for the ATLAS API (/v1): API keys, delegated passes, webhook verification.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/devatlasframework/atlas-sdks.git",
+    "directory": "typescript"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "generate": "node scripts/generate.mjs",
+    "generate:check": "node scripts/generate.mjs --check",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "node scripts/clean.mjs && tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "test:live": "vitest run --config vitest.live.config.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check:promises": "node scripts/check-promises.mjs",
+    "smoke:pack": "node scripts/smoke-pack.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.4",
+    "openapi-typescript": "7.13.0",
+    "prettier": "3.9.5",
+    "typescript": "5.9.3",
+    "vitest": "4.1.11"
+  }
+}

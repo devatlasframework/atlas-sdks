@@ -1,0 +1,15 @@
+{
+  "name": "atlas-sdks-tools",
+  "private": true,
+  "description": "Language-neutral tooling: vendor the API contract, verify its stamp, derive the SDK surface.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "verify": "node verify-contract.mjs && node derive-surface.mjs --check"
+  },
+  "devDependencies": {
+    "yaml": "2.9.1"
+  }
+}

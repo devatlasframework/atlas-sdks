@@ -1,0 +1,260 @@
+{
+  "provenance": "Built by the ATLAS scorer, not by hand: a learner answered every scored item of every dimension (raw scores cycling 1 to 5), and this is what GET /questionnaire/profile returned. present accepted it whole. It carries both sub-dimension shapes, bipolar and multi-category, which is the input a generator most easily gets wrong.",
+  "profile": {
+    "taxonomyVersion": "4.1.0-efa",
+    "completedDimensions": [
+      "OD1",
+      "OD2",
+      "OD3",
+      "OD4",
+      "OD5",
+      "OD6",
+      "OD7",
+      "OD8",
+      "OD9"
+    ],
+    "categoryScores": {
+      "D1.Visual": 2,
+      "D1.Auditory": 4.6667,
+      "D1.Read/Write": 2.3333,
+      "D1.Kinesthetic": 3.3333,
+      "D2a.Quiet": 4,
+      "D2a.Noise": 4,
+      "D2b.Bright": 3.3333,
+      "D2b.Dim": 3,
+      "D2c.Warm": 2.6667,
+      "D2c.Cool": 2,
+      "D2d.Formal": 2,
+      "D2d.Informal": 2.6667,
+      "D2e.Morning": 2.3333,
+      "D2e.Afternoon": 3.3333,
+      "D2e.Evening": 2.6667,
+      "D3a.Individual": 2,
+      "D3a.Pair": 4.6667,
+      "D3a.Small Group": 2.3333,
+      "D3a.Large Group": 3.3333,
+      "D3b.Collaborative": 2.6667,
+      "D3b.Competitive": 2,
+      "D5.Active": 3.3333,
+      "D5.Reflective": 3,
+      "D6.Concrete/Sensing": 2.6667,
+      "D6.Abstract/Intuitive": 2,
+      "D7a.Deep": 2,
+      "D7a.Surface": 4.6667,
+      "D7a.Strategic": 2.3333,
+      "D7a.Apathetic": 3.3333,
+      "D7b.Self-Regulated": 2.6667,
+      "D7b.Externally Regulated": 2,
+      "D7b.Lack of Regulation": 4.6667,
+      "D8b1.Fixed": 3,
+      "D8b1.Evolving": 3.3333,
+      "D8b2.Simple": 4,
+      "D8b2.Complex": 4,
+      "D8b3.Authority": 3.3333,
+      "D8b3.Inquiry": 3,
+      "D10a.Field-dependent": 2.6667,
+      "D10a.Field-independent": 2,
+      "D14a.Intrinsic": 2,
+      "D14a.Extrinsic": 4.6667,
+      "D14a.Achievement-oriented": 2.3333,
+      "D14b.High Emotional Control": 2.6667,
+      "D14b.Low Emotional Control": 2
+    },
+    "percentScores": {
+      "D1.Visual": 25,
+      "D1.Auditory": 91.67,
+      "D1.Read/Write": 33.33,
+      "D1.Kinesthetic": 58.33,
+      "D2a.Quiet": 75,
+      "D2a.Noise": 75,
+      "D2b.Bright": 58.33,
+      "D2b.Dim": 50,
+      "D2c.Warm": 41.67,
+      "D2c.Cool": 25,
+      "D2d.Formal": 25,
+      "D2d.Informal": 41.67,
+      "D2e.Morning": 33.33,
+      "D2e.Afternoon": 58.33,
+      "D2e.Evening": 41.67,
+      "D3a.Individual": 25,
+      "D3a.Pair": 91.67,
+      "D3a.Small Group": 33.33,
+      "D3a.Large Group": 58.33,
+      "D3b.Collaborative": 41.67,
+      "D3b.Competitive": 25,
+      "D5.Active": 58.33,
+      "D5.Reflective": 50,
+      "D6.Concrete/Sensing": 41.67,
+      "D6.Abstract/Intuitive": 25,
+      "D7a.Deep": 25,
+      "D7a.Surface": 91.67,
+      "D7a.Strategic": 33.33,
+      "D7a.Apathetic": 58.33,
+      "D7b.Self-Regulated": 41.67,
+      "D7b.Externally Regulated": 25,
+      "D7b.Lack of Regulation": 91.67,
+      "D8b1.Fixed": 50,
+      "D8b1.Evolving": 58.33,
+      "D8b2.Simple": 75,
+      "D8b2.Complex": 75,
+      "D8b3.Authority": 58.33,
+      "D8b3.Inquiry": 50,
+      "D10a.Field-dependent": 41.67,
+      "D10a.Field-independent": 25,
+      "D14a.Intrinsic": 25,
+      "D14a.Extrinsic": 91.67,
+      "D14a.Achievement-oriented": 33.33,
+      "D14b.High Emotional Control": 41.67,
+      "D14b.Low Emotional Control": 25
+    },
+    "subDimensionScores": {
+      "D1": {
+        "categories": {
+          "Visual": 2,
+          "Auditory": 4.6667,
+          "Read/Write": 2.3333,
+          "Kinesthetic": 3.3333
+        },
+        "dominantCategory": "Auditory",
+        "structureType": "multi-category"
+      },
+      "D2a": {
+        "score": 4,
+        "scorePercent": 75,
+        "poleALabel": "Quiet",
+        "poleBLabel": "Noise",
+        "structureType": "bipolar"
+      },
+      "D2b": {
+        "score": 3.1667,
+        "scorePercent": 54.17,
+        "poleALabel": "Bright",
+        "poleBLabel": "Dim",
+        "structureType": "bipolar"
+      },
+      "D2c": {
+        "score": 2.3333,
+        "scorePercent": 33.33,
+        "poleALabel": "Warm",
+        "poleBLabel": "Cool",
+        "structureType": "bipolar"
+      },
+      "D2d": {
+        "score": 2.3333,
+        "scorePercent": 33.33,
+        "poleALabel": "Formal",
+        "poleBLabel": "Informal",
+        "structureType": "bipolar"
+      },
+      "D2e": {
+        "categories": {
+          "Morning": 2.3333,
+          "Afternoon": 3.3333,
+          "Evening": 2.6667
+        },
+        "dominantCategory": "Afternoon",
+        "structureType": "multi-category"
+      },
+      "D3a": {
+        "categories": {
+          "Individual": 2,
+          "Pair": 4.6667,
+          "Small Group": 2.3333,
+          "Large Group": 3.3333
+        },
+        "dominantCategory": "Pair",
+        "structureType": "multi-category"
+      },
+      "D3b": {
+        "categories": {
+          "Collaborative": 2.6667,
+          "Competitive": 2
+        },
+        "dominantCategory": "Collaborative",
+        "structureType": "multi-category"
+      },
+      "D5": {
+        "score": 3.1667,
+        "scorePercent": 54.17,
+        "poleALabel": "Active",
+        "poleBLabel": "Reflective",
+        "structureType": "bipolar"
+      },
+      "D6": {
+        "score": 2.3333,
+        "scorePercent": 33.33,
+        "poleALabel": "Concrete/Sensing",
+        "poleBLabel": "Abstract/Intuitive",
+        "structureType": "bipolar"
+      },
+      "D7a": {
+        "categories": {
+          "Deep": 2,
+          "Surface": 4.6667,
+          "Strategic": 2.3333,
+          "Apathetic": 3.3333
+        },
+        "dominantCategory": "Surface",
+        "structureType": "multi-category"
+      },
+      "D7b": {
+        "categories": {
+          "Self-Regulated": 2.6667,
+          "Externally Regulated": 2,
+          "Lack of Regulation": 4.6667
+        },
+        "dominantCategory": "Lack of Regulation",
+        "structureType": "multi-category"
+      },
+      "D8b1": {
+        "score": 3.1667,
+        "scorePercent": 54.17,
+        "poleALabel": "Fixed",
+        "poleBLabel": "Evolving",
+        "structureType": "bipolar"
+      },
+      "D8b2": {
+        "score": 4,
+        "scorePercent": 75,
+        "poleALabel": "Simple",
+        "poleBLabel": "Complex",
+        "structureType": "bipolar"
+      },
+      "D8b3": {
+        "score": 3.1667,
+        "scorePercent": 54.17,
+        "poleALabel": "Authority",
+        "poleBLabel": "Inquiry",
+        "structureType": "bipolar"
+      },
+      "D10a": {
+        "score": 2.3333,
+        "scorePercent": 33.33,
+        "poleALabel": "Field-dependent",
+        "poleBLabel": "Field-independent",
+        "structureType": "bipolar"
+      },
+      "D14a": {
+        "categories": {
+          "Intrinsic": 2,
+          "Extrinsic": 4.6667,
+          "Achievement-oriented": 2.3333
+        },
+        "dominantCategory": "Extrinsic",
+        "structureType": "multi-category"
+      },
+      "D14b": {
+        "score": 2.3333,
+        "scorePercent": 33.33,
+        "poleALabel": "High Emotional Control",
+        "poleBLabel": "Low Emotional Control",
+        "structureType": "bipolar"
+      }
+    },
+    "attentionChecks": {
+      "passed": 0,
+      "failed": 0,
+      "presented": 5
+    }
+  }
+}

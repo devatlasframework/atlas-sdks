@@ -1,0 +1,6 @@
+node_modules/
+dist/
+coverage/
+live-results/
+src/generated/
+package-lock.json

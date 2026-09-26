@@ -10,3 +10,9 @@
 *.pdf binary
 *.woff binary
 *.woff2 binary
+# Byte-for-byte copies and generated output: their checksums and drift checks compare LF bytes,
+# so a Windows checkout must not rewrite them.
+contract/** text eol=lf
+scenarios/** text eol=lf
+typescript/src/generated/** text eol=lf
+typescript/test/unit/vectors/** text eol=lf

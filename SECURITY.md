@@ -1,6 +1,6 @@
 # Security Policy
 
-`atlas-sdks` holds the official client libraries for the ATLAS API — TypeScript, Python, and Java.
+`atlas-sdks` holds the official client libraries for the ATLAS API — TypeScript and Python.
 These SDKs run **inside your application** and handle **your API credentials**, so we treat
 anything that could leak a token, weaken transport security, or let a malicious API response affect
 your process as a serious bug.
@@ -14,19 +14,21 @@ internally. Please do not go looking for somewhere better to file it.
 
 ## Supported Versions
 
-**No SDK has been published yet.** The TypeScript, Python, and Java clients are scaffolded but not
-released to npm, PyPI, or Maven Central. This table will be filled in as each ships.
+**No SDK has been released yet.** The TypeScript SDK's source is in this repository, and the Python
+SDK's is not written yet. Neither is on npm or PyPI, and neither will be before an ATLAS environment
+has a public address: a release will be attached to this repository's GitHub Releases, with its
+sha256. This table will be filled in as each ships.
 
 | Version            | Supported          | Notes                                                         |
 | ------------------ | ------------------ | ------------------------------------------------------------- |
 | `develop`          | :white_check_mark: | Pre-release source — report anything you find here            |
-| Published releases | —                  | **None yet.** Nothing bearing the ATLAS name is on a registry |
+| Releases           | —                  | **None yet.** Nothing bearing the ATLAS name is on a registry |
 
-**When we do publish:** each SDK versions independently under SemVer, and **only the most recent
+**When we do release:** each SDK versions independently under SemVer, and **only the most recent
 released minor of each SDK receives security fixes**. Pinning an older minor means pinning its
 bugs; upgrade to receive fixes.
 
-> **Because nothing is published, any package currently claiming to be an ATLAS SDK is not ours.**
+> **Because nothing is released, any package currently claiming to be an ATLAS SDK is not ours.**
 > If you find one, please report it — see _Impersonated packages_ below.
 
 ---
@@ -61,7 +63,7 @@ A report we can reproduce is worth ten we cannot:
 | **Acknowledgement**    | Within **5 business days**                                                        |
 | **Triage + severity**  | Within **10 business days** — reproduced and scored, or an explanation of why not |
 | **Fix developed**      | Per severity (below), in a private advisory fork                                  |
-| **Fix released**       | Published to the registry, with the advisory                                      |
+| **Fix released**       | Released from this repository, with the advisory                                  |
 | **Advisory published** | Within **10 business days of the fix being released**, crediting you              |
 
 If we conclude something is not a vulnerability, we will say so plainly and explain why — and we
@@ -103,8 +105,8 @@ score. Tenant isolation is the platform's first non-negotiable.
 
 ### Impersonated packages
 
-Since we have published nothing, **any package on npm, PyPI, or Maven Central claiming to be an
-ATLAS SDK is not ours.** If you find one — a typosquat, a name-squat, or a package impersonating
+Since we have released nothing, **any package on any registry — npm, PyPI, Maven Central or another —
+claiming to be an ATLAS SDK is not ours.** If you find one — a typosquat, a name-squat, or a package impersonating
 this project — report it through the advisory link above **and** to the registry's own abuse team.
 Do not install it to investigate.
 
@@ -175,7 +177,8 @@ Not vulnerabilities — just the things that most often go wrong on the caller's
   `.gitignore` and scan your own history.
 - **Never log the client's request headers** wholesale — that is where the credential lives.
 - **Pin and verify.** Use a lockfile, enable your ecosystem's audit tooling, and check the package
-  name character by character before your first install.
+  name character by character before your first install. A release's notes carry the package's
+  sha256: check the file you downloaded against it.
 - **Rotate a key the moment you suspect exposure**, and prefer the narrowest scope that works.
 
 ---
