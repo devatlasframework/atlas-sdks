@@ -1,0 +1,11 @@
+{
+  "provenance": "Captured from ATLAS's real webhook sender on a development environment: a resource.ready delivery, received by a public request bin and saved exactly as it arrived. The endpoint it was sent to was deleted straight after the capture, so the secret below signs nothing any more. It is here so that webhook verifiers are tested against real sender output, never against output they signed themselves.",
+  "capturedAt": "2026-09-26T10:55:16.000Z",
+  "secret": "whsec_LrAQaR3QfRCE6cxRweZdkmltWeyUupOr4PeMOsfqwrQ",
+  "headers": {
+    "atlas-signature": "t=1790420116,v1=dfc2f5cd419a6b419cce000943b40fc1a91c1bb225306d6f1bea81c68bb5d73a",
+    "atlas-delivery-attempt": "1",
+    "content-type": "application/json; charset=utf-8"
+  },
+  "body": "{\"data\": {\"version_id\": \"d8a3243e-eed2-443e-833b-5b8c9bfe817e\", \"resource_id\": \"7fcdd1c9-0031-42f6-9a42-58106e160e7d\"}, \"type\": \"resource.ready\", \"event_id\": \"d8a3243e-eed2-443e-833b-5b8c9bfe817e\", \"delivery_id\": \"0fbba055-3a8f-404d-acfe-0ea14679fc78\", \"occurred_at\": \"2026-09-26T10:54:51.661086980Z\"}"
+}

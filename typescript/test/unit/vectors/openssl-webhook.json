@@ -1,0 +1,17 @@
+{
+  "note": "Signed by OpenSSL, not by this SDK: `printf %s \"<t>.<body>\" | openssl dgst -sha256 -hmac <secret>`. An independent signer, so a verifier bug cannot be mirrored in the vector. The secrets are test strings that sign nothing real.",
+  "timestamp": 1758499200,
+  "body": "{\"delivery_id\":\"6b1e4c0a-2f7d-4e8b-9a31-5c2d7e9f0b14\",\"event_id\":\"0d9a3f6e-7c21-4b58-8e4f-2a6b1c3d5e70\",\"type\":\"resource.ready\",\"occurred_at\":\"2025-09-22T00:00:00Z\",\"data\":{\"resource_id\":\"9c8b7a6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d\",\"version_id\":\"1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d\"}}",
+  "secrets": {
+    "current": "openssl-vector-secret-current",
+    "previous": "openssl-vector-secret-previous"
+  },
+  "signatures": {
+    "current": "0b795280b7c2e416b8eb422dd5e21f045a1d28efd62376dfd2f1cd9200c0ed76",
+    "previous": "201aac865c961e0361f0ba1198eb88084c9225b43559bff59d6890750358cb31"
+  },
+  "headers": {
+    "current": "t=1758499200,v1=0b795280b7c2e416b8eb422dd5e21f045a1d28efd62376dfd2f1cd9200c0ed76",
+    "rotation": "t=1758499200,v1=0b795280b7c2e416b8eb422dd5e21f045a1d28efd62376dfd2f1cd9200c0ed76,v1=201aac865c961e0361f0ba1198eb88084c9225b43559bff59d6890750358cb31"
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "about": "What every SDK's live suite does against a deployed ATLAS API, in this order. It is data so that the SDKs cannot drift into testing different things: a runner fails on a scenario it does not implement, a run fails if it skips one, and a run fails unless every operation the SDK covers was called. The arbiter is the deployed API, never a mock generated from the same contract.",
+  "requires": {
+    "ATLAS_BASE_URL": "The address the API is served from, without /v1.",
+    "ATLAS_API_KEY": "An API key carrying content:read, end-users:manage, ai:use and usage:read.",
+    "ATLAS_WEB_URL": "The web address people sign in at, where the consent page is.",
+    "ATLAS_CLIENT_ID": "The client id of an application registered for sign-in on behalf, with ATLAS_REDIRECT_URI among its redirect addresses.",
+    "ATLAS_REDIRECT_URI": "A loopback address registered on that application, such as http://127.0.0.1:53682/callback. The runner listens there for the consent page's answer.",
+    "ATLAS_PASS_ORG_ID": "The organisation the consenting person reads content in.",
+    "ATLAS_WEBHOOK_CAPTURE_URL": "The request log of the public receiver the application's webhook endpoint points at: a webhook.site token API address, https://webhook.site/token/<uuid>/requests.",
+    "ATLAS_WEBHOOK_SECRET": "That endpoint's signing secret."
+  },
+  "scenarios": [
+    {
+      "id": "describe-key",
+      "operations": ["describeKey"],
+      "expect": "The key's organisation, application and permissions."
+    },
+    {
+      "id": "read-named-content",
+      "operations": ["listResources", "getResource", "getResourceDownload"],
+      "expect": "listResources returns at least one READY resource, by title - not an empty list. getResource returns that same resource by id, and getResourceDownload a download address and a file name for it."
+    },
+    {
+      "id": "link-retried-under-one-key",
+      "operations": ["linkEndUser", "listEndUsers"],
+      "fault": "The first linkEndUser response is read and then discarded, as if the connection had dropped after the API answered.",
+      "expect": "The SDK retries once, and both attempts carry one Idempotency-Key. listEndUsers counts exactly one more active link than before. The same key sent with a different body is refused 409 ATLAS-DEV-010, which proves the API recorded the key."
+    },
+    {
+      "id": "present-both-shapes",
+      "operations": ["presentForEndUser"],
+      "input": "fixtures/profile-scored.json",
+      "expect": "200, carrying an endorsement from a bipolar sub-dimension of the profile and one from a multi-category sub-dimension."
+    },
+    {
+      "id": "usage",
+      "operations": ["developerUsage"],
+      "expect": "This period's usage, listing the key's own application."
+    },
+    {
+      "id": "revoke-link",
+      "operations": ["revokeEndUser"],
+      "expect": "The link made above answers inactive, with a revocation time."
+    },
+    {
+      "id": "delegated-grant",
+      "operations": ["exchangeDelegatedToken", "listResources", "getResource", "getResourceDownload"],
+      "interactive": "A person signs in at the printed consent address and chooses Allow. The code expires about a minute after that, so the runner exchanges it as soon as it arrives.",
+      "expect": "The code is exchanged for a pass, and the pass reads all three content operations. A refresh rotates it. The refresh token it replaced is then refused 400 ATLAS-DEV-014, and the pass issued before the refresh still reads."
+    },
+    {
+      "id": "webhook-from-the-real-sender",
+      "operations": ["getResource"],
+      "expect": "The newest delivery the receiver captured verifies under the endpoint's secret, as of when it arrived, and the same body with one byte changed is refused. A signature proves who signed, not which environment sent it, so the delivery must also have arrived within the last 24 hours and name a resource the key can read in the environment under test."
+    },
+    {
+      "id": "throttled-and-honoured",
+      "operations": ["describeKey"],
+      "expect": "Calls past the per-subject request rate draw a 429 carrying Retry-After. The SDK waits at least that long, and the same call then succeeds. It runs last because it spends the key's budget for a window."
+    }
+  ]
+}
