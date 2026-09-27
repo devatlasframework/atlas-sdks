@@ -1,0 +1,102 @@
+[project]
+name = "devatlasframework-sdk"
+dynamic = ["version"]
+description = "Python client for the ATLAS API (/v1): API keys, delegated passes, webhook verification."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+# No runtime dependencies: the transport is the standard library's. scripts/check_promises.py holds
+# the built wheel to this.
+dependencies = []
+classifiers = [
+  # PyPI refuses any upload carrying a "Private ::" classifier. Nothing goes to a public registry
+  # before an ATLAS environment has a public address, and this makes an accidental upload fail.
+  "Private :: Do Not Upload",
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Typing :: Typed",
+]
+
+[project.urls]
+Repository = "https://github.com/devatlasframework/atlas-sdks"
+Security = "https://github.com/devatlasframework/atlas-sdks/security/policy"
+
+[build-system]
+requires = ["hatchling==1.32.4"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/devatlasframework/sdk/_version.py"
+pattern = '^SDK_VERSION: Final = "(?P<version>[^"]+)"'
+
+[tool.hatch.build.targets.wheel]
+# devatlasframework/ has no __init__.py: it is a namespace (PEP 420), as the npm scope is.
+packages = ["src/devatlasframework"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/", "README.md", "LICENSE", "pyproject.toml"]
+
+[dependency-groups]
+dev = [
+  "datamodel-code-generator==0.83.0",
+  "mypy==2.3.1",
+  "pytest==9.1.1",
+  "ruff==0.16.9",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.pytest.ini_options]
+# The unit suite. The live suite runs only when asked for: uv run pytest tests/live
+testpaths = ["tests/unit"]
+addopts = ["--strict-markers", "-p", "no:cacheprovider"]
+xfail_strict = true
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+mypy_path = "src"
+explicit_package_bases = true
+namespace_packages = true
+warn_unreachable = true
+files = ["src", "tests", "scripts"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "D", "N", "RUF", "SIM", "PT", "PL", "TID"]
+ignore = [
+  "D203",    # one-blank-line-before-class: D211 is chosen instead
+  "D213",    # multi-line-summary-second-line: D212 is chosen instead
+  "D105",    # magic methods need no docstring
+  "D107",    # __init__ is documented on its class
+  "PLR0913", # keyword-only option lists are the API
+  "PLR2004", # HTTP statuses are their own names
+  "PLR0911", # the retry and verification rules are written as the contract lists them,
+  "PLR0912", #   one branch per rule, rather than split to satisfy a count
+  "PLR0915",
+  "PLR0917",
+  "S101",    # assert is how pytest checks
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Generated from the contract, and never edited: its docstrings are the contract's descriptions.
+"src/devatlasframework/sdk/_generated/*" = ["E501", "D", "N815", "RUF", "UP"]
+# Tests and scripts are not the public API.
+"tests/**" = ["D", "S", "PLR", "N802"]
+"scripts/**" = ["D", "S603", "S607", "PLR"]
+# The package's own namespace carries no __init__.py by design (PEP 420).
+"src/devatlasframework/sdk/*" = ["N815"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
