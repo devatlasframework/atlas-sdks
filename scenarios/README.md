@@ -21,6 +21,9 @@ not part of CI; their output is quoted in the pull request that needs it.
   learner answered every scored item of every dimension, and this is what the API returned for
   them. It carries both sub-dimension shapes, bipolar and multi-category, the input a generator most
   easily gets wrong.
+- `fixtures/webhook-openssl-vectors.json`: deliveries signed by OpenSSL, not by any SDK, for the
+  cases one capture cannot show: a rotation carrying two signatures, and a header built to defeat a
+  verifier that checks freshness on the wrong timestamp.
 - `fixtures/webhook-delivery-dev.json`: a delivery captured from ATLAS's real webhook sender on a
   development environment, with the headers it arrived with and its endpoint's signing secret. The
   endpoint was deleted as soon as the delivery was captured, so the secret verifies nothing. It is
