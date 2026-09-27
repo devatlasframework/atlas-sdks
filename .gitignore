@@ -3,6 +3,8 @@ node_modules/
 dist/
 coverage/
 *.tsbuildinfo
+# `npm pack` output: a release attaches the tarball, and nothing commits it
+*.tgz
 
 # Python
 __pycache__/
