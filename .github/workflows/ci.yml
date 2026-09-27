@@ -79,3 +79,42 @@ jobs:
         run: npm run check:promises
       - name: The packed tarball installs and imports as ESM
         run: npm run smoke:pack
+
+  # The Python SDK, on the oldest Python it promises and the current one. As with TypeScript, the
+  # live suite runs where the API does, and its output is quoted in the pull request.
+  python:
+    name: python (${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.12', '3.14']
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: '0.12.5'
+          python-version: ${{ matrix.python }}
+          enable-cache: true
+          cache-dependency-glob: python/uv.lock
+      - name: The locked environment, and nothing else
+        run: uv sync --locked
+      - name: The generated code is what the surface generates
+        run: uv run python scripts/generate.py --check
+      - name: Lint
+        run: uv run ruff check .
+      - name: Formatting
+        run: uv run ruff format --check .
+      - name: Strict type-check, the compile-time type assertions included
+        run: uv run mypy
+      - name: Unit tests
+        run: uv run pytest
+      - name: Build, with the build backend and its dependencies checked against pinned hashes
+        run: uv build --build-constraints build-constraints.txt --require-hashes
+      - name: The README's promises - Python 3.12+, fully typed, ruff, no runtime dependencies
+        run: uv run python scripts/check_promises.py
+      - name: The built wheel installs alone, imports, and carries its types
+        run: uv run python scripts/smoke_wheel.py
