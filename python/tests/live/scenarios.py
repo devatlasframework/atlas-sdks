@@ -169,7 +169,8 @@ def link_retried_under_one_key(live: Live) -> None:
     before = active()
     ref = f"sdk-live-python-{int(time.time() * 1000)}"
     end_user = atlas.link_end_user({"ref": ref})
-    assert len(fault.keys) == 2, "the SDK retried once"
+    attempts = len(fault.keys)
+    assert attempts == 2, "the SDK retried once"
     assert fault.keys[0], "the first attempt carried a key"
     assert fault.keys[1] == fault.keys[0], "and the retry carried the same one"
     after = active()
@@ -185,7 +186,7 @@ def link_retried_under_one_key(live: Live) -> None:
 
     live.end_user = end_user
     live.results["link-retried-under-one-key"] = {
-        "attempts": len(fault.keys),
+        "attempts": attempts,
         "sameKey": fault.keys[0] == fault.keys[1],
         "activeLinks": {"before": before, "after": after},
         "endUserId": end_user["id"],
