@@ -15,4 +15,3 @@
 contract/** text eol=lf
 scenarios/** text eol=lf
 typescript/src/generated/** text eol=lf
-typescript/test/unit/vectors/** text eol=lf
