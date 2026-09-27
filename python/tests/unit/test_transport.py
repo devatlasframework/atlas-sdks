@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import platform
 import re
 import time
@@ -533,11 +534,17 @@ class TestWhatTheSecurityReviewFound:
 
     @pytest.mark.parametrize("status", [200, 400])
     def test_a_body_nested_too_deep_to_parse_is_an_atlas_error(
-        self, loopback: Start, status: int
+        self, loopback: Start, monkeypatch: pytest.MonkeyPatch, status: int
     ) -> None:
-        deep = b"[" * 100_000 + b"]" * 100_000
-        server = loopback(Reply(status, {"content-type": "application/json"}, raw=deep))
+        # Whether a given depth overflows depends on the platform's stack (Python 3.14 guards by
+        # real stack depth, and Linux's is far deeper than Windows'), so the parser is made to
+        # overflow here rather than trusted to.
+        def overflowing(*_: object, **__: object) -> object:
+            raise RecursionError("maximum recursion depth exceeded while decoding a JSON array")
+
+        server = loopback(Reply(status, {"content-type": "application/json"}, raw=b"[[[]]]"))
         atlas, _ = client(server.base_url)
+        monkeypatch.setattr(json, "loads", overflowing)
         with pytest.raises(AtlasError):
             atlas.describe_key()
 
