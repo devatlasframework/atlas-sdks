@@ -331,3 +331,47 @@ describe('a renewal that fails for a reason other than refusal', () => {
     expect(order).toEqual(['stored pass-2 refresh-2', 'using pass-2']);
   });
 });
+
+describe('a renewal whose answer cannot be read', () => {
+  for (const [label, reply] of [
+    ['not JSON', { status: 200, headers: { 'content-type': 'application/json' }, raw: '<html>' }],
+    ['missing its fields', { status: 200, body: {} }],
+  ] as const) {
+    it(`leaves the outcome unknown when the answer is ${label}, and never presents the token again on its own`, async () => {
+      server = await loopback(reply, { status: 200, body: pass(2) });
+      let now = T0;
+      const delegated = DelegatedPass.fromResponse(
+        pass(1, 60),
+        { baseUrl: server.baseUrl, clientId: CLIENT_ID },
+        { now: () => now },
+      );
+      const error = (await delegated.refresh().catch((e: unknown) => e)) as RefreshRefusedError;
+      expect(error).toBeInstanceOf(RefreshRefusedError);
+      expect(error.refusal).toBeInstanceOf(AtlasConnectionError);
+      expect(delegated.renewalOutcomeUnknown).toBe(true);
+      // ATLAS answered 2xx, so it may have rotated the token.
+      now = new Date(T0.getTime() + 45_000);
+      await expect(delegated.currentAccessToken()).resolves.toBe('pass-1');
+      expect(server.received).toHaveLength(1);
+    });
+  }
+});
+
+describe('onRenewed', () => {
+  it('runs before the new token can be used, and a failure in it leaves the renewed tokens in place', async () => {
+    server = await loopback({ status: 200, body: pass(2) });
+    const seen: string[] = [];
+    const delegated: DelegatedPass = DelegatedPass.fromResponse(pass(1), {
+      baseUrl: server.baseUrl,
+      clientId: CLIENT_ID,
+      onRenewed: (snapshot) => {
+        seen.push(`${snapshot.accessToken} ${delegated.accessToken}`);
+        throw new Error('the store is down');
+      },
+    });
+    await expect(delegated.refresh()).rejects.toThrow('the store is down');
+    expect(seen).toEqual(['pass-2 pass-1']);
+    expect(delegated.accessToken).toBe('pass-2');
+    expect(delegated.snapshot().refreshToken).toBe('refresh-2');
+  });
+});
