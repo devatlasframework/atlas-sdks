@@ -1,0 +1,4 @@
+# The signing secret in scenarios/fixtures/webhook-delivery-dev.json, as committed in 3908183: a
+# development webhook endpoint deleted straight after the capture, so it signs nothing. See
+# .gitleaks.toml. Each line is one finding (commit:file:rule:line), never a value.
+3908183d116be119814405222807992697b8c9c3:scenarios/fixtures/webhook-delivery-dev.json:generic-api-key:4

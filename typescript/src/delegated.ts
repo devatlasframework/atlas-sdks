@@ -304,12 +304,16 @@ export class DelegatedPass {
       );
     }
     const body: TokenExchangeRequest = { grantType: 'refresh_token', refreshToken, clientId: this.#clientId };
-    let response: DelegatedPassResponse;
+    let next: DelegatedPassSnapshot;
     try {
-      response = await this.#transport.call<DelegatedPassResponse>('exchangeDelegatedToken', {
+      const response = await this.#transport.call<DelegatedPassResponse>('exchangeDelegatedToken', {
         body,
         signal,
       });
+      next = DelegatedPass.#snapshotOf(response, this.#now());
+      if (typeof next.accessToken !== 'string' || Number.isNaN(Date.parse(next.expiresAt))) {
+        throw new TypeError('the answer carries no usable access_token or expires_in');
+      }
     } catch (error) {
       if (error instanceof AtlasApiError) {
         if (error.status === 400) {
@@ -326,15 +330,31 @@ export class DelegatedPass {
         if (error.mayHaveReachedServer) this.#outcomeUnknown = true;
         throw new RefreshRefusedError(error, this.expiresAt);
       }
-      throw error;
+      // Anything else came after the request was sent: a 2xx the SDK could not read (not JSON,
+      // too large, missing a field), or an error your onResponse threw. ATLAS answered, so it may
+      // well have rotated the token, and whether it did is unknown. Nothing from the answer is
+      // repeated, because the answer may hold the new tokens.
+      this.#outcomeUnknown = true;
+      const unreadable = new AtlasConnectionError(
+        'exchangeDelegatedToken',
+        `the renewal's answer could not be read (${error instanceof Error ? error.name : typeof error}), so whether it rotated the refresh token is unknown`,
+        1,
+        true,
+        error,
+      );
+      throw new RefreshRefusedError(unreadable, this.expiresAt);
     }
-    const next = DelegatedPass.#snapshotOf(response, this.#now());
-    this.#accessToken = next.accessToken;
-    this.#refreshToken = next.refreshToken;
-    this.#expiresAt = new Date(next.expiresAt);
-    this.#scope = next.scope;
-    this.#outcomeUnknown = false;
-    await this.#onRenewed?.(this.snapshot());
+    try {
+      // Handed over before the new token can be used: while this runs, the pass still holds the
+      // old one, and a call that needs a renewal joins this one.
+      await this.#onRenewed?.(next);
+    } finally {
+      this.#accessToken = next.accessToken;
+      this.#refreshToken = next.refreshToken;
+      this.#expiresAt = new Date(next.expiresAt);
+      this.#scope = next.scope;
+      this.#outcomeUnknown = false;
+    }
   }
 
   /**

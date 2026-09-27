@@ -1,16 +1,15 @@
 # atlas-sdks
 
 **Public** client libraries for the ATLAS API (`/v1`) — "The personalisation layer for
-e-learning". The TypeScript SDK is here. The Python SDK follows, under the same rules. Both are
-generated from the ATLAS API contract, and both cover exactly what a developer's credentials can
-call.
+e-learning". Two SDKs, TypeScript and Python, both generated from the ATLAS API contract, and both
+covering exactly what a developer's credentials can call.
 
 ## Layout
 
 | Path | What |
 |---|---|
 | `typescript/` | TypeScript SDK — TS strict, ESM |
-| `python/` | Python SDK — typed, ruff-clean. Not written yet |
+| `python/` | Python SDK — fully typed, ruff-clean, synchronous, standard library only |
 | `contract/` | The API contract every SDK is generated from, the stamp naming it, and the surface derived from it |
 | `scenarios/` | The live scenarios every SDK runs against a deployed API, and their fixtures |
 | `tools/` | Vendor the contract, check its stamp, derive the surface |
@@ -34,6 +33,15 @@ notes. For TypeScript:
 npm install https://github.com/devatlasframework/atlas-sdks/releases/download/typescript-v<version>/devatlasframework-sdk-<version>.tgz
 ```
 
+For Python, the wheel (`devatlasframework-sdk`, imported as `devatlasframework.sdk`):
+
+```sh
+pip install https://github.com/devatlasframework/atlas-sdks/releases/download/python-v<version>/devatlasframework_sdk-<version>-py3-none-any.whl
+```
+
+The Python manifest carries the `Private :: Do Not Upload` classifier, which PyPI refuses, as the
+TypeScript manifest is marked `private`: nothing can be published by accident.
+
 **Until then, any package on any registry that calls itself the ATLAS SDK is not ours.**
 
 ## Prerequisites
@@ -45,6 +53,8 @@ Per SDK: Node 22+ / Python 3.12+.
 ```sh
 cd typescript && npm ci && npm test   # the unit suite: no network
 cd typescript && npm run test:live    # against a deployed API - see scenarios/live.json
+cd python && uv sync --locked && uv run pytest   # the unit suite: no network
+cd python && uv run pytest tests/live -s          # against a deployed API
 cd tools && npm ci && npm run verify  # the contract matches its stamp, and the surface is current
 ```
 
@@ -52,7 +62,7 @@ cd tools && npm ci && npm run verify  # the contract matches its stamp, and the 
 
 Each SDK has its own SemVer version and releases on its own schedule when the public API changes;
 SDK releases never gate an app deployment. Each SDK also records the version of the contract it
-was generated from, readable at run time (`CONTRACT_VERSION` in TypeScript). The two numbers
+was generated from, readable at run time (`CONTRACT_VERSION` in both). The two numbers
 answer different questions. The SDK's version says what changed in the SDK, and the contract's says
 which API it describes.
 
@@ -65,8 +75,8 @@ Same branch model and Conventional Commits as the other repos
 ## Environment variables
 
 Examples use placeholders only (`ATLAS_API_KEY`) — never real keys. The live suite reads its
-configuration from the environment or from `typescript/.env.live`, which is never committed; the
-variables it needs are listed in `scenarios/live.json`.
+configuration from the environment or from `typescript/.env.live` or `python/.env.live`, which are
+never committed; the variables they need are listed in `scenarios/live.json`.
 
 ## Ownership & help
 

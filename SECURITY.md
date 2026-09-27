@@ -14,9 +14,9 @@ internally. Please do not go looking for somewhere better to file it.
 
 ## Supported Versions
 
-**No SDK has been released yet.** The TypeScript SDK's source is in this repository, and the Python
-SDK's is not written yet. Neither is on npm or PyPI, and neither will be before an ATLAS environment
-has a public address: a release will be attached to this repository's GitHub Releases, with its
+**No SDK has been released yet.** The source of both SDKs, TypeScript and Python, is in this
+repository. Neither is on npm or PyPI, and neither will be before an ATLAS environment has a public
+address: a release will be attached to this repository's GitHub Releases, with its
 sha256. This table will be filled in as each ships.
 
 | Version            | Supported          | Notes                                                         |
@@ -106,7 +106,9 @@ score. Tenant isolation is the platform's first non-negotiable.
 ### Impersonated packages
 
 Since we have released nothing, **any package on any registry — npm, PyPI, Maven Central or another —
-claiming to be an ATLAS SDK is not ours.** If you find one — a typosquat, a name-squat, or a package impersonating
+claiming to be an ATLAS SDK is not ours.** Our names will be `@devatlasframework/sdk` on npm and
+`devatlasframework-sdk` on PyPI, and neither holds a package yet; PyPI's `atlas-sdk`, among others,
+belongs to an unrelated project. If you find one — a typosquat, a name-squat, or a package impersonating
 this project — report it through the advisory link above **and** to the registry's own abuse team.
 Do not install it to investigate.
 

@@ -14,7 +14,8 @@ those semantics (e.g. expose idempotency keys, verify webhook signatures, surfac
 - **Public repo:** no internal URLs or hostnames, no references to unreleased features, no
   secrets or real keys anywhere (examples use `ATLAS_API_KEY` placeholders). The one deliberate
   exception is `scenarios/fixtures/webhook-delivery-dev.json`, a real delivery whose endpoint was
-  deleted after the capture; `.gitleaks.toml` names it and nothing else.
+  deleted after the capture; `.gitleaksignore` allows that one finding by fingerprint (commit, file,
+  rule, line), never by value, and nothing else.
 - **The surface is derived, never listed.** `tools/derive-surface.mjs` reads the vendored
   contract: every operation whose `security` admits a developer credential, plus the operation a
   scheme names in `x-atlas-issued-by`. Every SDK generates from `contract/surface.json` and binds
@@ -37,5 +38,6 @@ those semantics (e.g. expose idempotency keys, verify webhook signatures, surfac
   is off, or while `SECURITY.md` says anything false.
 - Every public method carries docs and a runnable example; error handling mirrors the API's
   problem-details shape and branches on `errorCode`.
-- Idiomatic per language: TS strict + ESM, Node 22+, no runtime dependencies · Python fully typed +
-  ruff.
+- Idiomatic per language: TS strict + ESM, Node 22+, no runtime dependencies ·
+  Python 3.12+, fully typed (`mypy --strict`, `py.typed`) + ruff, no runtime dependencies, bodies as
+  `TypedDict`s keyed by the wire's own names. Each promise is held by a CI check (`check-promises`).

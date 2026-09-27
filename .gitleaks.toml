@@ -1,4 +1,5 @@
-# gitleaks' default rules, with one allowance.
+# gitleaks' default rules, and nothing else. The one finding they report is allowed by fingerprint in
+# .gitleaksignore, never by value here.
 #
 # scenarios/fixtures/webhook-delivery-dev.json is a delivery captured from ATLAS's real webhook
 # sender, and it holds the signing secret of the endpoint it was sent to. That endpoint lived on a
@@ -6,15 +7,11 @@
 # verifies nothing any more. It is here because the SDKs' webhook verifiers are tested against real
 # sender output, never against output they signed themselves.
 #
-# The allowance is that ONE value, not the file: a fixture refreshed from another environment
-# would carry a different secret, and that one still fails the scan.
+# A fingerprint names one finding - the commit, the file, the rule and the line - so a fixture
+# refreshed in a later commit, or the same value pasted anywhere else, still fails the scan. An
+# allowance written as the value would be a second copy of the secret in a second file.
 
 title = "atlas-sdks"
 
 [extend]
 useDefault = true
-
-[allowlist]
-description = "The signing secret of a development webhook endpoint deleted after the fixture was captured"
-regexTarget = "match"
-regexes = ['''whsec_LrAQaR3QfRCE6cxRweZdkmltWeyUupOr4PeMOsfqwrQ''']

@@ -27,7 +27,7 @@ interface Vector {
   readonly headers: { readonly current: string; readonly rotation: string };
 }
 const vector = JSON.parse(
-  readFileSync(new URL('./vectors/openssl-webhook.json', import.meta.url), 'utf8'),
+  readFileSync(new URL('../../../scenarios/fixtures/webhook-openssl-vectors.json', import.meta.url), 'utf8'),
 ) as Vector;
 
 const at = (seconds: number) => ({ now: new Date(seconds * 1000) });
