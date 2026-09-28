@@ -7,7 +7,8 @@ consented with a delegated pass, and verify the webhooks ATLAS sends you.
 - Generated from the ATLAS API contract, and it covers exactly what a developer's credentials can
   call. A client built with a key has the key's operations; a client built with a pass has the
   pass's. Calling anything else is a type error, not a `403`.
-- Version `0.1.0`, not released yet. See the repository README for where releases will come from.
+- Version `0.1.0`, released as the GitHub Release `typescript-v0.1.0` of this repository. The
+  repository README says how to install it, sha256 check included.
 
 ## Quick start
 
