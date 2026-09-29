@@ -14,22 +14,22 @@ internally. Please do not go looking for somewhere better to file it.
 
 ## Supported Versions
 
-**No SDK has been released yet.** The source of both SDKs, TypeScript and Python, is in this
-repository. Neither is on npm or PyPI, and neither will be before an ATLAS environment has a public
-address: a release will be attached to this repository's GitHub Releases, with its
-sha256. This table will be filled in as each ships.
+An SDK is released as a **GitHub Release of this repository**, tagged `typescript-v<version>` or
+`python-v<version>`, with the package attached and its sha256 in the release notes. Neither SDK is
+on npm or PyPI, and neither will be before an ATLAS environment has a public address.
 
-| Version            | Supported          | Notes                                                         |
-| ------------------ | ------------------ | ------------------------------------------------------------- |
-| `develop`          | :white_check_mark: | Pre-release source — report anything you find here            |
-| Releases           | —                  | **None yet.** Nothing bearing the ATLAS name is on a registry |
+| Version                              | Supported          | Notes                                                         |
+| ------------------------------------ | ------------------ | ------------------------------------------------------------- |
+| Latest release of each SDK           | :white_check_mark: | The newest `typescript-v…` and `python-v…` release            |
+| Release candidates (`…-rc.N`)        | :x:                | Pre-releases for testing only; install the release instead    |
+| `develop`                            | :white_check_mark: | Unreleased source — report anything you find here             |
+| Any package on a registry            | :x:                | **Not ours.** Nothing bearing the ATLAS name is on a registry |
 
-**When we do release:** each SDK versions independently under SemVer, and **only the most recent
-released minor of each SDK receives security fixes**. Pinning an older minor means pinning its
-bugs; upgrade to receive fixes.
+Each SDK versions independently under SemVer, and **only the most recent released minor of each SDK
+receives security fixes**. Pinning an older minor means pinning its bugs; upgrade to receive fixes.
 
-> **Because nothing is released, any package currently claiming to be an ATLAS SDK is not ours.**
-> If you find one, please report it — see _Impersonated packages_ below.
+> **Because we publish nothing to a registry, any package claiming to be an ATLAS SDK there is not
+> ours.** If you find one, please report it — see _Impersonated packages_ below.
 
 ---
 
@@ -105,8 +105,9 @@ score. Tenant isolation is the platform's first non-negotiable.
 
 ### Impersonated packages
 
-Since we have released nothing, **any package on any registry — npm, PyPI, Maven Central or another —
-claiming to be an ATLAS SDK is not ours.** Our names will be `@devatlasframework/sdk` on npm and
+Since we publish nothing to any registry, **any package on any registry — npm, PyPI, Maven Central or
+another — claiming to be an ATLAS SDK is not ours.** Ours are attached to this repository's GitHub
+Releases and nowhere else. Our names will be `@devatlasframework/sdk` on npm and
 `devatlasframework-sdk` on PyPI, and neither holds a package yet; PyPI's `atlas-sdk`, among others,
 belongs to an unrelated project. If you find one — a typosquat, a name-squat, or a package impersonating
 this project — report it through the advisory link above **and** to the registry's own abuse team.

@@ -26,23 +26,31 @@ exchange. Operations only a signed-in person's own session can call are not in a
 
 **Nothing is published to a package registry, and nothing will be before an ATLAS environment has a
 public address:** a package you could install but point nowhere would help nobody. An SDK release
-will be a GitHub Release of this repository, with the package attached and its sha256 in the release
-notes. For TypeScript:
+is a GitHub Release of this repository, with the package attached and its sha256 in the release
+notes. Download the file, compare its sha256 with the release notes, and install the file you
+checked, never the URL: a release asset can be replaced under the same name. For TypeScript:
 
 ```sh
-npm install https://github.com/devatlasframework/atlas-sdks/releases/download/typescript-v<version>/devatlasframework-sdk-<version>.tgz
+curl -fsSLO https://github.com/devatlasframework/atlas-sdks/releases/download/typescript-v<version>/devatlasframework-sdk-<version>.tgz
+openssl dgst -sha256 devatlasframework-sdk-<version>.tgz
+npm install ./devatlasframework-sdk-<version>.tgz
 ```
 
 For Python, the wheel (`devatlasframework-sdk`, imported as `devatlasframework.sdk`):
 
 ```sh
-pip install https://github.com/devatlasframework/atlas-sdks/releases/download/python-v<version>/devatlasframework_sdk-<version>-py3-none-any.whl
+curl -fsSLO https://github.com/devatlasframework/atlas-sdks/releases/download/python-v<version>/devatlasframework_sdk-<version>-py3-none-any.whl
+openssl dgst -sha256 devatlasframework_sdk-<version>-py3-none-any.whl
+pip install ./devatlasframework_sdk-<version>-py3-none-any.whl
 ```
+
+A tag ending `-rc.N` is a release candidate, published as a GitHub pre-release for testing. Install
+the release it becomes instead.
 
 The Python manifest carries the `Private :: Do Not Upload` classifier, which PyPI refuses, as the
 TypeScript manifest is marked `private`: nothing can be published by accident.
 
-**Until then, any package on any registry that calls itself the ATLAS SDK is not ours.**
+**Any package on any registry that calls itself the ATLAS SDK is not ours.**
 
 ## Prerequisites
 

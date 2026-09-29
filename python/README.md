@@ -9,8 +9,9 @@ with a delegated pass, and verify the webhooks ATLAS sends you.
   call. A client built with a key has the key's operations; a client built with a pass has the
   pass's. Calling anything else is an attribute error, and a type error under a type checker, not a
   `403`.
-- Distribution `devatlasframework-sdk`, imported as `devatlasframework.sdk`. Version `0.1.0`, not
-  released yet. See the repository README for where releases will come from.
+- Distribution `devatlasframework-sdk`, imported as `devatlasframework.sdk`. Version `0.1.0`,
+  released as the GitHub Release `python-v0.1.0` of this repository. The repository README says how
+  to install it, sha256 check included.
 
 ## Quick start
 
