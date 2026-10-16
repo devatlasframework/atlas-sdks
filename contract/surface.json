@@ -2,12 +2,12 @@
   "openapi": "3.1.0",
   "info": {
     "title": "ATLAS API",
-    "version": "1.7.0",
+    "version": "1.13.0",
     "license": {
       "name": "MIT",
       "identifier": "MIT"
     },
-    "description": "The ATLAS public API (/v1). This document is the single source of truth for the **public** API surface: the client libraries and the reference documentation are generated from it, and a change to an endpoint changes this document in the same release.\n\n**What this contract does not cover.** This document describes the public `/v1` surface. A small number of routes exist outside it for platform operation; they are not part of this contract, are not callable with an API key, and are deliberately undocumented here. Their set is fixed and checked on every build, so it cannot grow by accident.\n\n**Response headers every call carries.** Two sets, described here once because they are properties of the whole surface rather than of any one operation, and OpenAPI has no way to say that.\n\n`X-Request-Id` is on **every** response, success or failure. It is a fresh value per request, minted by ATLAS and never read from the request, and the same value appears in the server-side record of that call — so quoting it in a support report identifies the exact call, whatever its status. This is what to quote for a `403`, a `409` or a `429`. It is distinct from the `errorId` a `500` carries in its body, which references one server-side failure and is the only detail that response discloses.\n\n`RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset` are on every **authenticated** response outside `/auth/*`, and describe one budget: the **caller's own overall request rate** — the ceiling per window, how many calls are left (floored at zero), and how many seconds until the window restarts. Reading them does not itself consume budget. They describe a **request-rate** limit and never a credit allowance, which is a separate mechanism.\n\n**They describe only that budget, which matters most on a `429`.** Several operations have their own narrower limits — posting to a discussion, writing to the achievements board, rendering an invoice, and the AI features. When one of those refuses, the response still carries the caller's overall figures **unchanged**, so `RateLimit-Remaining` can read a healthy number beside a `429`. Diagnose a refusal from `Retry-After` and the problem's `errorCode`, never from `RateLimit-Remaining`. When the overall budget itself is what refused, `RateLimit-Remaining` reads zero.\n\n**Their absence is not \"unlimited\".** If the counter backing the budget cannot be reached, ATLAS serves the request rather than failing it, and omits these three headers rather than reporting a figure it cannot stand behind. Treat their absence as unknown. Responses under `/auth/*` never carry them at all: those endpoints refuse with one deliberately indistinguishable shape, and a remaining count would defeat it.\n\nA `429` raised by a request-rate limit carries `Retry-After`, in seconds. Two kinds of `429` do not, because neither clears after an interval: an exhausted AI credit allowance (`ATLAS-BIL-001`/`ATLAS-BIL-002`), which resets daily, and the discussion live-link connection cap (`ATLAS-FRM-010`), which clears when a connection is closed. The `errorCode` distinguishes them, which is why it and not `RateLimit-Remaining` is what to branch on. Every operation a request-rate limit can refuse declares that `429`; the authenticated ones share one description, `Throttled`.\n\n**Paging.** One convention, named here once so a client library generates a single paginator: a bounded `limit` and an opaque `cursor` on the request, and a `{ items: [...], nextCursor: string | null }` envelope on the response, where a null `nextCursor` means the end. The cursor encodes server-side position and a client that parses one is relying on something that will change. Cursor rather than offset because these collections grow while they are being read, and offset paging over a growing table skips and duplicates rows in a way the caller cannot see.\n\n**Three** groups of reads do not follow it yet, and none is a precedent. **Four** operations page with `page` + `size`; that shape is **frozen** — no new operation may use it. **Seven** cap with a bare `limit` and offer no second page, so a caller who reaches the cap cannot get the rest. **Thirteen** return an unbounded top-level array. The last two groups — all twenty array-returning reads — carry `x-atlas-pagination: deferred-j3`; giving them the envelope changes a response shape and is tracked separately. Any new collection endpoint uses the convention above.\n\n**Versioning.** `info.version` above is the version of THIS CONTRACT and is not the ATLAS product version. It moves when the described surface moves — minor for additive change, patch for a correction — and it does not move at a release cut. A breaking change means `/v2`, never an edit to `/v1`. What changed between two versions is recorded in the contract's changelog, published beside this document.\n\n**A body that cannot be read.** Every operation that takes a JSON body answers `400` with `ATLAS-VAL-002` when the body never becomes an object: it is missing, it is not JSON, or a value cannot take its field's type - a string where a number belongs, a name an enum does not know. `ATLAS-VAL-001` is the other half: the body was read, and a field broke one of its stated constraints. Whenever a field can be named, both carry an `errors` array whose `field` says where the problem is - properties dotted, map keys and indices in brackets; a body that is missing, or malformed before any field, has no `errors` array. Neither ever repeats the value that was sent, which on some operations is a password. The operations below declare their own `400`s; this one applies to all of them and is stated once, here.\n\n**The rest of a request that cannot be read.** A path, query or header value that cannot take its type - an id that is not a UUID, a number that is not a number - or a required one that is absent is `400` with `ATLAS-VAL-003`, naming the parameter and never its value (the problem's `instance` is the request's own path, so a path value you sent appears there and nowhere else); a query parameter over its stated bound is `400` with `ATLAS-VAL-001`, like a body field. An address nothing answers at is `404` with `ATLAS-SYS-005`, a method the address does not answer is `405` with `ATLAS-SYS-009`, and a `Content-Type` an operation does not read or an `Accept` it cannot write is `415` or `406` with `ATLAS-SYS-010`. **Every response this API sends as a refusal carries an `errorCode`**, so a client never has to branch on a status alone. The one exception is a path the web server cannot parse at all - an encoded slash (`%2F`) or a NUL byte in it - which is refused `400` with an HTML body before this API sees the request. No address in this contract contains either, so a client that builds its paths from it and encodes each value does not send one.\n"
+    "description": "The ATLAS public API (/v1). This document is the single source of truth for the **public** API surface: the client libraries and the reference documentation are generated from it, and a change to an endpoint changes this document in the same release.\n\n**What this contract does not cover.** This document describes the public `/v1` surface. A small number of routes exist outside it for platform operation; they are not part of this contract, are not callable with an API key, and are deliberately undocumented here. Their set is fixed and checked on every build, so it cannot grow by accident.\n\n**Response headers every call carries.** Two sets, described here once because they are properties of the whole surface rather than of any one operation, and OpenAPI has no way to say that.\n\n`X-Request-Id` is on **every** response, success or failure. It is a fresh value per request, minted by ATLAS and never read from the request, and the same value appears in the server-side record of that call — so quoting it in a support report identifies the exact call, whatever its status. This is what to quote for a `403`, a `409` or a `429`. It is distinct from the `errorId` a `500` carries in its body, which references one server-side failure and is the only detail that response discloses.\n\n`RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset` are on every **authenticated** response outside `/auth/*`, and describe one budget: the **caller's own overall request rate** — the ceiling per window, how many calls are left (floored at zero), and how many seconds until the window restarts. Reading them does not itself consume budget. They describe a **request-rate** limit and never a credit allowance, which is a separate mechanism.\n\n**They describe only that budget, which matters most on a `429`.** Several operations have their own narrower limits — posting to a discussion, writing to the achievements board, rendering an invoice, and the AI features. When one of those refuses, the response still carries the caller's overall figures **unchanged**, so `RateLimit-Remaining` can read a healthy number beside a `429`. Diagnose a refusal from `Retry-After` and the problem's `errorCode`, never from `RateLimit-Remaining`. When the overall budget itself is what refused, `RateLimit-Remaining` reads zero.\n\n**Their absence is not \"unlimited\".** If the counter backing the budget cannot be reached, ATLAS serves the request rather than failing it, and omits these three headers rather than reporting a figure it cannot stand behind. Treat their absence as unknown. Responses under `/auth/*` never carry them at all: those endpoints refuse with one deliberately indistinguishable shape, and a remaining count would defeat it.\n\nA `429` raised by a request-rate limit carries `Retry-After`, in seconds. Two kinds of `429` do not, because neither clears after an interval: an exhausted AI credit allowance (`ATLAS-BIL-001`/`ATLAS-BIL-002`), which resets daily, and the discussion live-link connection cap (`ATLAS-FRM-010`), which clears when a connection is closed. The `errorCode` distinguishes them, which is why it and not `RateLimit-Remaining` is what to branch on. Every operation a request-rate limit can refuse declares that `429`; the authenticated ones share one description, `Throttled`.\n\n**Paging.** One convention, named here once so a client library generates a single paginator: a bounded `limit` and an opaque `cursor` on the request, and a `{ items: [...], nextCursor: string | null }` envelope on the response, where a null `nextCursor` means the end. The cursor encodes server-side position and a client that parses one is relying on something that will change. Cursor rather than offset because these collections grow while they are being read, and offset paging over a growing table skips and duplicates rows in a way the caller cannot see.\n\n**Since 1.13.0 every list read is bounded**, and a read that does not follow the convention says what bounds it. **Four** operations page with `page` + `size`; that shape is **frozen** — no new operation may use it. The reads that predate the convention and return a bare top-level array, or an envelope without a `cursor`, keep their shape and carry `x-atlas-pagination: capped-<bound>`: the most one response holds. Where the bound is a number, the read takes a `limit` whose default IS that number, so a caller that sends none gets what it always got, up to the bound; `capped-seats` is the organisation's seat allowance, and `capped-registry` is a list fixed in ATLAS itself. The envelopes whose `nextCursor` was always null — members, a resource's versions, the usage breakdown, the plans, end users and connected applications — now take `cursor` and `limit` and page. Any new collection endpoint uses the convention above.\n\n**Versioning.** `info.version` above is the version of THIS CONTRACT and is not the ATLAS product version. It moves when the described surface moves — minor for additive change, patch for a correction — and it does not move at a release cut. A breaking change means `/v2`, never an edit to `/v1`. What changed between two versions is recorded in the contract's changelog, published beside this document.\n\n**A body that cannot be read.** Every operation that takes a JSON body answers `400` with `ATLAS-VAL-002` when the body never becomes an object: it is missing, it is not JSON, or a value cannot take its field's type - a string where a number belongs, a name an enum does not know. `ATLAS-VAL-001` is the other half: the body was read, and a field broke one of its stated constraints. Whenever a field can be named, both carry an `errors` array whose `field` says where the problem is - properties dotted, map keys and indices in brackets; a body that is missing, or malformed before any field, has no `errors` array. Neither ever repeats the value that was sent, which on some operations is a password. The operations below declare their own `400`s; this one applies to all of them and is stated once, here.\n\n**The rest of a request that cannot be read.** A path, query or header value that cannot take its type - an id that is not a UUID, a number that is not a number - or a required one that is absent is `400` with `ATLAS-VAL-003`, naming the parameter and never its value (the problem's `instance` is the request's own path, so a path value you sent appears there and nowhere else); a query parameter over its stated bound is `400` with `ATLAS-VAL-001`, like a body field. An address nothing answers at is `404` with `ATLAS-SYS-005`, a method the address does not answer is `405` with `ATLAS-SYS-009`, and a `Content-Type` an operation does not read or an `Accept` it cannot write is `415` or `406` with `ATLAS-SYS-010`. **Every response this API sends as a refusal carries an `errorCode`**, so a client never has to branch on a status alone. The one exception is a path the web server cannot parse at all - an encoded slash (`%2F`) or a NUL byte in it - which is refused `400` with an HTML body before this API sees the request. No address in this contract contains either, so a client that builds its paths from it and encodes each value does not send one.\n\n**A body too large, and a server too busy.** A JSON body larger than the operation accepts is `413` with `ATLAS-SYS-006`, refused before any of it is read - 64 KiB unless an operation states a larger bound; an upload has its own. Any operation may answer `503` with `ATLAS-SYS-019` and `Retry-After: 1` when ATLAS could not take the request in time - its database had no connection free within a second, or a statement ran past its deadline. Nothing was changed by a request answered that way; send it again after the interval.\n"
   },
   "servers": [
     {
@@ -28,8 +28,8 @@
     "rule": "Every operation whose security admits a scheme publishing x-atlas-scopes (a developer credential), plus the operation such a scheme names in x-atlas-issued-by. Security requirements naming only a signed-in session are dropped, and so are the schemes they name.",
     "retry": "repeatable: an idempotent method (RFC 9110). repeatable-with-key: the operation declares an Idempotency-Key header, and every attempt carries the same key. once: anything else, never retried after a failure that may have reached the server. Every class retries a 429 after its Retry-After, because a throttled request did nothing.",
     "from": {
-      "version": "1.7.0",
-      "sha256": "c86ec2657cd5a850befd8cc0f7e7b746d3ae3d66fe45dd85727ca09e2804d6ec"
+      "version": "1.13.0",
+      "sha256": "996b85354bbc6d71069b0280514bb1d1ac23dba8c5da108505dfc3bf94e09d87"
     },
     "developerSchemes": [
       "apiKeyAuth",
@@ -335,6 +335,30 @@
             ]
           }
         ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 200
+            },
+            "description": "How many end users one response holds (since 1.13.0)."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "description": "The `nextCursor` of the previous page (since 1.13.0). Opaque: an unreadable one starts from the first page.\n"
+          }
+        ],
         "responses": {
           "200": {
             "description": "The application's linked learners",
@@ -498,6 +522,21 @@
           },
           "500": {
             "description": "Unexpected failure (`ATLAS-SYS-001`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "ATLAS is in maintenance mode (`ATLAS-SYS-014`), which refuses new work like this and keeps reading going. Try again later; `GET /platform/status` says whether the window is still on.\n",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -728,6 +767,21 @@
           },
           "500": {
             "description": "Unexpected failure (`ATLAS-SYS-001`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "ATLAS is in maintenance mode (`ATLAS-SYS-014`), which refuses new work like this and keeps reading going. Try again later; `GET /platform/status` says whether the window is still on.\n",
+            "headers": {
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
             "content": {
               "application/problem+json": {
                 "schema": {

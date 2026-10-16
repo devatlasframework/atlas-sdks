@@ -84,6 +84,20 @@ describe('what every request carries', () => {
     expect(server.received[1]?.url).toBe(`/v1/o/${ORG}/resources/x%2Fy`);
   });
 
+  it('sends a page size and a cursor for the end users, and nothing when neither is given', async () => {
+    server = await loopback(
+      { status: 200, body: { items: [], nextCursor: 'next' } },
+      { status: 200, body: { items: [], nextCursor: null } },
+    );
+    const { atlas } = client(server.baseUrl);
+    await atlas.listEndUsers({ limit: 50 });
+    await atlas.listEndUsers({ cursor: 'a b' });
+    expect(server.received.map((r) => r.url)).toEqual([
+      `/v1/o/${ORG}/end-users?limit=50`,
+      `/v1/o/${ORG}/end-users?cursor=a+b`,
+    ]);
+  });
+
   it('resolves the organisation from describeKey once, when none is given', async () => {
     server = await loopback(
       { status: 200, body: KEY_IDENTITY },

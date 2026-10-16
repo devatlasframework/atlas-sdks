@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: ATLAS API
-  version: 1.7.0
+  version: 1.13.0
   license:
     name: MIT
     identifier: MIT
@@ -74,13 +74,18 @@ info:
     table skips and duplicates rows in a way the caller cannot see.
 
 
-    **Three** groups of reads do not follow it yet, and none is a precedent. **Four**
-    operations page with `page` + `size`; that shape is **frozen** — no new operation may
-    use it. **Seven** cap with a bare `limit` and offer no second page, so a caller who
-    reaches the cap cannot get the rest. **Thirteen** return an unbounded top-level array.
-    The last two groups — all twenty array-returning reads — carry
-    `x-atlas-pagination: deferred-j3`; giving them the envelope changes a response shape
-    and is tracked separately. Any new collection endpoint uses the convention above.
+    **Since 1.13.0 every list read is bounded**, and a read that does not follow the
+    convention says what bounds it. **Four** operations page with `page` + `size`; that
+    shape is **frozen** — no new operation may use it. The reads that predate the
+    convention and return a bare top-level array, or an envelope without a `cursor`, keep
+    their shape and carry `x-atlas-pagination: capped-<bound>`: the most one response
+    holds. Where the bound is a number, the read takes a `limit` whose default IS that
+    number, so a caller that sends none gets what it always got, up to the bound;
+    `capped-seats` is the organisation's seat allowance, and `capped-registry` is a list
+    fixed in ATLAS itself. The envelopes whose `nextCursor` was always null — members, a
+    resource's versions, the usage breakdown, the plans, end users and connected
+    applications — now take `cursor` and `limit` and page. Any new collection endpoint
+    uses the convention above.
 
 
     **Versioning.** `info.version` above is the version of THIS CONTRACT and is not the
@@ -116,6 +121,15 @@ info:
     NUL byte in it - which is refused `400` with an HTML body before this API sees the
     request. No address in this contract contains either, so a client that builds its
     paths from it and encodes each value does not send one.
+
+
+    **A body too large, and a server too busy.** A JSON body larger than the operation
+    accepts is `413` with `ATLAS-SYS-006`, refused before any of it is read - 64 KiB
+    unless an operation states a larger bound; an upload has its own. Any operation may
+    answer `503` with `ATLAS-SYS-019` and `Retry-After: 1` when ATLAS could not take
+    the request in time - its database had no connection free within a second, or a
+    statement ran past its deadline. Nothing was changed by a request answered that way;
+    send it again after the interval.
 servers:
   - url: /v1
 tags:
@@ -186,6 +200,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Health'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /platform/status:
+    get:
+      operationId: getPlatformStatus
+      summary: Whether ATLAS is in maintenance mode
+      description: >
+        One public bit, for the banner every page shows during a maintenance window - visitors included.
+        Nothing else is here: whether AI is paused is each organisation's own allowance state, said to its
+        members.
+      tags: [system]
+      security: []
+      responses:
+        '200':
+          description: The platform's status. Never cached.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformStatus'
         '500':
           $ref: '#/components/responses/InternalError'
   /auth/register:
@@ -388,6 +421,76 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '500':
           $ref: '#/components/responses/InternalError'
+  /auth/data-request:
+    post:
+      operationId: requestDataRequestLink
+      summary: Email a link that asks for the account's deletion
+      description: >
+        Emails a single-use, expiring link that asks for the account with this address to be
+        deleted - the way to ask for a person who cannot sign in, a suspended account above all.
+        Always 202: for an unknown address, and within the per-person resend cooldown, a mail is
+        simply not sent, so the response never says whether an account exists. Nothing is
+        exported this way. Guest endpoint.
+      tags: [auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataRequestLinkRequest'
+      responses:
+        '202':
+          description: Accepted (a mail was sent only if the account exists and no link was issued within the cooldown)
+        '400':
+          description: >
+            Malformed email (problem type `.../problems/validation`)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/data-request-confirm:
+    post:
+      operationId: confirmDataRequest
+      summary: Confirm a deletion request from its emailed link
+      description: >
+        Spends the link and records the request to delete the account - the same request the
+        signed-in privacy settings make. It ASKS: ATLAS staff carry the deletion out, and send one
+        last email when it is done. A person who already has an open request is answered with that
+        request's time. Deliberately a POST - link prefetchers must never spend a link. Guest
+        endpoint.
+      tags: [auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataRequestConfirmRequest'
+      responses:
+        '200':
+          description: The request is recorded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErasureRequestResponse'
+        '400':
+          description: >
+            The link is unknown, already used or expired
+            (`.../problems/data-request-link-invalid`, `ATLAS-AUTH-033`) - ask for a new one; or a
+            missing or oversized token (`ATLAS-VAL-001`)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /auth/login:
     post:
       operationId: login
@@ -445,7 +548,9 @@ paths:
           description: >
             Correct password but the email address is not verified yet
             (problem type `.../problems/email-not-verified`,
-            `ATLAS-AUTH-006`) - only ever returned to the credential holder
+            `ATLAS-AUTH-006`), or the account has been suspended
+            (`.../problems/account-suspended`, `ATLAS-AUTH-029`) - only ever
+            returned to the credential holder
           content:
             application/problem+json:
               schema:
@@ -673,6 +778,160 @@ paths:
           $ref: '#/components/responses/RateLimited'
         '500':
           $ref: '#/components/responses/InternalError'
+  /auth/me/export:
+    get:
+      operationId: exportMyData
+      summary: Download everything ATLAS holds about you
+      description: >
+        Answers one JSON file with the data ATLAS holds about the signed-in account: the account
+        itself, its memberships, its questionnaire answers and learner profile, its notes and
+        highlights, its tutor conversations, its practice, progress, goals, discussions and AI
+        usage, and the applications it has signed in to. It is the person's own copy, so it
+        includes what no organisation can ever see.
+
+
+        Never included: password hashes, second-factor secrets, backup codes, and session or
+        application tokens - the credentials themselves are not data about you, and a copy of one
+        would be a way in. The mood estimate is not included because it is never stored; it is
+        worked out from your answers each time it is used.
+
+
+        Every download is recorded, and the account's owner is told by email, because a download
+        is the quietest thing a stolen session could do. Three downloads an hour.
+      tags: [auth]
+      responses:
+        '200':
+          description: The file, as an attachment.
+          headers:
+            Content-Disposition:
+              description: '`attachment` with a dated filename.'
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                description: >
+                  `format` names the layout (`atlas-personal-data/1`); each other top-level key is
+                  one area of the product, and each holds the rows ATLAS stores for you there.
+                required: [format, generatedAt, account]
+                properties:
+                  format:
+                    type: string
+                  generatedAt:
+                    type: string
+                    format: date-time
+                  account:
+                    type: object
+                additionalProperties: true
+        '401':
+          description: >
+            Missing, malformed, expired, or otherwise unusable access token -
+            one shape, no diagnostic detail (problem type
+            `.../problems/unauthorized`, `ATLAS-SYS-002`)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: >
+            Your data is larger than one download holds - 64 MB (`ATLAS-AUTH-034`, since 1.13.0).
+            Measured before anything is sent: nothing was exported, and the problem says how large it
+            was. The request is recorded so the data can be sent another way.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/me/erasure-request:
+    get:
+      operationId: getMyErasureRequest
+      summary: Your open request to delete your account
+      description: >
+        When you asked for your account to be deleted, if that request is still open. A request
+        closes when you withdraw it, or when ATLAS deletes the account.
+      tags: [auth]
+      responses:
+        '200':
+          description: The open request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErasureRequestResponse'
+        '401':
+          description: >
+            Missing, malformed, expired, or otherwise unusable access token -
+            one shape, no diagnostic detail (problem type
+            `.../problems/unauthorized`, `ATLAS-SYS-002`)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          description: No request is open (`ATLAS-SYS-005`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      operationId: requestMyErasure
+      summary: Ask for your account to be deleted
+      description: >
+        Records your request. ATLAS staff carry it out: your personal data is deleted, your
+        private workspace goes with it, what you uploaded to a shared organisation stays with that
+        organisation, and records the law requires us to keep - invoices and security logs - are
+        kept without your name. Asking again while a request is open answers the same request.
+        No request body.
+      tags: [auth]
+      responses:
+        '200':
+          description: The open request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErasureRequestResponse'
+        '401':
+          description: >
+            Missing, malformed, expired, or otherwise unusable access token -
+            one shape, no diagnostic detail (problem type
+            `.../problems/unauthorized`, `ATLAS-SYS-002`)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      operationId: withdrawMyErasureRequest
+      summary: Withdraw your request to delete your account
+      description: >
+        Withdraws your open request. Answers 204 whether or not one was open.
+      tags: [auth]
+      responses:
+        '204':
+          description: No request is open now.
+        '401':
+          description: >
+            Missing, malformed, expired, or otherwise unusable access token -
+            one shape, no diagnostic detail (problem type
+            `.../problems/unauthorized`, `ATLAS-SYS-002`)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /auth/google:
     get:
       operationId: startGoogleSignIn
@@ -814,6 +1073,15 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+        '403':
+          description: >
+            The account has been suspended, so it cannot sign in (problem type
+            `.../problems/account-suspended`, `ATLAS-AUTH-029`) - only ever returned once the
+            credential has proved who is asking
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
         '429':
           $ref: '#/components/responses/RateLimited'
         '503':
@@ -876,6 +1144,15 @@ paths:
             Rarely, the code was right and the account changed while the session was being
             started - deleted, or signed out everywhere - so none was issued (`ATLAS-AUTH-023`);
             sign in again.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: >
+            The account has been suspended, so it cannot sign in (problem type
+            `.../problems/account-suspended`, `ATLAS-AUTH-029`) - only ever returned once the
+            credential has proved who is asking
           content:
             application/problem+json:
               schema:
@@ -1016,6 +1293,15 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+        '403':
+          description: >
+            The account has been suspended, so it cannot sign in (problem type
+            `.../problems/account-suspended`, `ATLAS-AUTH-029`) - only ever returned once the
+            credential has proved who is asking
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
         '429':
           $ref: '#/components/responses/RateLimited'
         '503':
@@ -1087,7 +1373,7 @@ paths:
           $ref: '#/components/responses/InternalError'
   /auth/sessions:
     get:
-      x-atlas-pagination: deferred-j3
+      x-atlas-pagination: capped-200
       operationId: listSessions
       summary: The caller's active sessions
       description: >
@@ -1097,6 +1383,19 @@ paths:
         claim) so the UI can label "this device". Ordered most-recently-active
         first. Bearer-protected.
       tags: [auth]
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 200
+          description: >
+            The most sessions to return (since 1.13.0). The default is the maximum, so a caller that
+            sends none gets what it always got, up to this bound: the response can no longer grow
+            with the data behind it.
       responses:
         '200':
           description: The caller's active sessions
@@ -1190,7 +1489,7 @@ paths:
           $ref: '#/components/responses/InternalError'
   /orgs:
     get:
-      x-atlas-pagination: deferred-j3
+      x-atlas-pagination: capped-200
       operationId: listMyOrgs
       summary: The caller's organisations
       description: >
@@ -1202,6 +1501,19 @@ paths:
         caller's identity alone (no id parameter), so it can only ever return
         the caller's own orgs - never an enumeration of others'.
       tags: [orgs]
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 200
+          description: >
+            The most organisations to return (since 1.13.0). The default is the maximum, so a caller that
+            sends none gets what it always got, up to this bound: the response can no longer grow
+            with the data behind it.
       responses:
         '200':
           description: The caller's organisations, private org first
@@ -1267,6 +1579,17 @@ paths:
                 $ref: '#/components/schemas/Problem'
         '429':
           $ref: '#/components/responses/Throttled'
+        '503':
+          description: >
+            ATLAS is in maintenance mode (`ATLAS-SYS-014`), which refuses new work like this and keeps
+            reading going. Try again later; `GET /platform/status` says whether the window is still on.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
         '500':
           $ref: '#/components/responses/InternalError'
   /orgs/developer:
@@ -1314,6 +1637,17 @@ paths:
                 $ref: '#/components/schemas/Problem'
         '429':
           $ref: '#/components/responses/Throttled'
+        '503':
+          description: >
+            ATLAS is in maintenance mode (`ATLAS-SYS-014`), which refuses new work like this and keeps
+            reading going. Try again later; `GET /platform/status` says whether the window is still on.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
         '500':
           $ref: '#/components/responses/InternalError'
   /key:
@@ -1385,6 +1719,7 @@ paths:
           format: uuid
         description: The organisation's id
     get:
+      x-atlas-pagination: capped-50
       operationId: listApps
       summary: The developer account's applications
       description: >
@@ -1626,6 +1961,7 @@ paths:
           format: uuid
         description: The application the keys belong to
     get:
+      x-atlas-pagination: capped-200
       operationId: listApiKeys
       summary: An application's API keys
       description: >
@@ -1929,6 +2265,7 @@ paths:
           format: uuid
         description: The application the endpoints belong to
     get:
+      x-atlas-pagination: capped-10
       operationId: listWebhookEndpoints
       summary: An application's webhook endpoints
       description: >
@@ -2981,6 +3318,25 @@ paths:
         delegated pass - a third party able to read this would be reading a profile
         of who somebody else does business with.
       tags: [developer]
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+          description: How many applications one page holds (since 1.13.0).
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 512
+          description: >
+            The `nextCursor` of the previous page (since 1.13.0). Opaque: an unreadable one starts
+            from the first page.
       responses:
         '200':
           description: The connected applications
@@ -3046,6 +3402,7 @@ paths:
           $ref: '#/components/responses/InternalError'
   /scopes:
     get:
+      x-atlas-pagination: capped-registry
       operationId: listScopes
       summary: The permission vocabulary
       description: >
@@ -3119,6 +3476,25 @@ paths:
       tags: [developer]
       security:
         - apiKeyAuth: [end-users:manage]
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 200
+          description: How many end users one response holds (since 1.13.0).
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 512
+          description: >
+            The `nextCursor` of the previous page (since 1.13.0). Opaque: an unreadable one starts
+            from the first page.
       responses:
         '200':
           description: The application's linked learners
@@ -3231,6 +3607,17 @@ paths:
                 $ref: '#/components/schemas/Problem'
         '429':
           description: Request rate exceeded (`ATLAS-SYS-004`)
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: >
+            ATLAS is in maintenance mode (`ATLAS-SYS-014`), which refuses new work like this and keeps
+            reading going. Try again later; `GET /platform/status` says whether the window is still on.
           headers:
             Retry-After:
               $ref: '#/components/headers/RetryAfter'
@@ -3416,6 +3803,17 @@ paths:
                 $ref: '#/components/schemas/Problem'
         '429':
           description: Request rate exceeded (`ATLAS-SYS-004`)
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: >
+            ATLAS is in maintenance mode (`ATLAS-SYS-014`), which refuses new work like this and keeps
+            reading going. Try again later; `GET /platform/status` says whether the window is still on.
           headers:
             Retry-After:
               $ref: '#/components/headers/RetryAfter'
@@ -3680,13 +4078,16 @@ paths:
           format: uuid
         description: The organisation's id
     get:
-      x-atlas-pagination: deferred-j3
+      x-atlas-pagination: capped-seats
       operationId: listInvitations
       summary: The active org's pending invitations
       description: >
         The org's pending invitations, newest first. ADMIN-only.
         No raw tokens are returned - only the stored hash exists, so a lost link
-        is replaced by resend, never re-read from the list.
+        is replaced by resend, never re-read from the list. Since 1.13.0 the list holds
+        live invitations and those that lapsed within the last seven days, which may
+        still be resent; one that lapsed earlier is removed, so the list is bounded by
+        the seat allowance (`capped-seats`).
       tags: [orgs]
       responses:
         '200':
@@ -3884,11 +4285,32 @@ paths:
       operationId: listMembers
       summary: The active org's members + seat usage
       description: >
-        The org's members, seat usage, and the caller's own standing. Visible to ADMIN and MODERATOR; a USER is 403. A SHARED-org surface
+        The org's members, seat usage, and the caller's own standing. Since 1.13.0 `members` is one page in
+        joining order, sorted owner first and then by name within the page; `nextCursor` continues it, and
+        `seats` and `viewer` are the whole organisation's on every page. Visible to ADMIN and MODERATOR; a USER is 403. A SHARED-org surface
         - a PRIVATE org reads as 404. Members are added via invitations, so
         there is no create here. name/email are the org's own member directory,
         not personal data private to a learner.
       tags: [orgs]
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 200
+          description: How many members one page holds (since 1.13.0).
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 512
+          description: >
+            The `nextCursor` of the previous page (since 1.13.0). Opaque: an unreadable one starts
+            from the first page.
       responses:
         '200':
           description: The members, seat usage, and viewer summary
@@ -4371,6 +4793,17 @@ paths:
                 $ref: '#/components/schemas/Problem'
         '429':
           $ref: '#/components/responses/Throttled'
+        '503':
+          description: >
+            ATLAS is in maintenance mode (`ATLAS-SYS-014`), which refuses new work like this and keeps
+            reading going. Try again later; `GET /platform/status` says whether the window is still on.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
         '500':
           $ref: '#/components/responses/InternalError'
   /o/{orgId}/resources/trash:
@@ -4941,6 +5374,12 @@ paths:
         returns the report already on record (200 instead of 201, same body), so a
         double submit neither errors nor duplicates. A different reason is a
         different claim and is recorded separately.
+
+
+        One person may file a limited number of reports in one organisation in any
+        24 hours. Past it, a new report is refused with `429` (`ATLAS-CNT-026`) until
+        the oldest of them is a day old; re-reporting one already open still returns
+        its receipt.
       tags: [content]
       requestBody:
         required: true
@@ -4990,7 +5429,25 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
         '429':
-          $ref: '#/components/responses/Throttled'
+          description: >
+            This person has filed as many reports in this organisation as one day allows
+            (`ATLAS-CNT-026`): `Retry-After` is the wait until the oldest of them is a day
+            old, which may be hours. Or the request budget is spent (`ATLAS-SYS-004`). The
+            reports already filed are unaffected. The `RateLimit-*` headers describe the
+            request budget only, so they can read a healthy figure beside `ATLAS-CNT-026`.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+            RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
         '500':
           $ref: '#/components/responses/InternalError'
   /o/{orgId}/resources/{resourceId}/versions/{versionId}/complete:
@@ -5180,6 +5637,11 @@ paths:
             object is kept and the version is returned to AWAITING_UPLOAD, so calling
             this endpoint again once the dependency is back succeeds without
             re-uploading. Retry with backoff.
+
+
+            `ATLAS-SYS-012` - document processing is paused for the moment: ATLAS has switched AI off, or the
+            platform's daily cap is reached. Not the workspace's allowance; the upload stays pending, so finalize it
+            again later. `ATLAS-SYS-014` - ATLAS is in maintenance mode, which refuses new uploads; the same applies.
           content:
             application/problem+json:
               schema:
@@ -5213,6 +5675,25 @@ paths:
         resource: superseded versions stay viewable; the ACTIONS (new
         version, retire) are Admin/Moderator.
       tags: [content]
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+          description: How many versions one page holds (since 1.13.0).
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 512
+          description: >
+            The `nextCursor` of the previous page (since 1.13.0). Opaque: an unreadable one starts
+            from the first page.
       responses:
         '200':
           description: The timeline and the org storage total
@@ -5329,6 +5810,17 @@ paths:
                 $ref: '#/components/schemas/Problem'
         '429':
           $ref: '#/components/responses/Throttled'
+        '503':
+          description: >
+            ATLAS is in maintenance mode (`ATLAS-SYS-014`), which refuses new work like this and keeps
+            reading going. Try again later; `GET /platform/status` says whether the window is still on.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
         '500':
           $ref: '#/components/responses/InternalError'
   /o/{orgId}/resources/{resourceId}/versions/{versionId}/retire:
@@ -7545,6 +8037,19 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+        '503':
+          description: >
+            AI extras are paused for the moment (`ATLAS-SYS-012`): ATLAS has switched AI off, for this
+            organisation or for everyone, or the platform's daily cap is reached. Not about the plan, the
+            payment or anyone's allowance, so a message must not say it is. The original stays where it is;
+            `Retry-After` is a suggestion, not a promise.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
         '500':
           $ref: '#/components/responses/InternalError'
   /o/{orgId}/resources/{resourceId}/content/blocks/{blockId}/concept-map:
@@ -7670,6 +8175,19 @@ paths:
                 $ref: '#/components/schemas/Problem'
         '451':
           description: These bytes have been taken down (`ATLAS-CNT-016`)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: >
+            AI extras are paused for the moment (`ATLAS-SYS-012`): ATLAS has switched AI off, for this
+            organisation or for everyone, or the platform's daily cap is reached. Not about the plan, the
+            payment or anyone's allowance, so a message must not say it is. The original stays where it is;
+            `Retry-After` is a suggestion, not a promise.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
           content:
             application/problem+json:
               schema:
@@ -8515,7 +9033,7 @@ paths:
           default: 20
         description: How many rows to return, newest first
     get:
-      x-atlas-pagination: deferred-j3
+      x-atlas-pagination: capped-100
       operationId: listRecentPracticeAttempts
       summary: This learner's recent attempts
       description: >
@@ -8565,7 +9083,7 @@ paths:
           format: uuid
         description: The organisation's id
     get:
-      x-atlas-pagination: deferred-j3
+      x-atlas-pagination: capped-200
       operationId: listPracticeDecks
       summary: The flashcard decks this learner has started
       description: >
@@ -8581,6 +9099,19 @@ paths:
         multiple-choice is a deck with zero cards - and a client must offer no
         card affordance for it rather than an empty one.
       tags: [practice]
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 200
+          description: >
+            The most decks to return (since 1.13.0). The default is the maximum, so a caller that
+            sends none gets what it always got, up to this bound: the response can no longer grow
+            with the data behind it.
       responses:
         '200':
           description: The decks; empty until the learner has graded a card
@@ -8623,7 +9154,7 @@ paths:
           format: uuid
         description: The question bank the deck is a view of
     get:
-      x-atlas-pagination: deferred-j3
+      x-atlas-pagination: capped-5
       operationId: listDeckCards
       summary: One deck's cards
       description: >
@@ -8686,7 +9217,7 @@ paths:
           default: 20
         description: How many cards to return, soonest due first
     get:
-      x-atlas-pagination: deferred-j3
+      x-atlas-pagination: capped-100
       operationId: listDuePracticeCards
       summary: The cards due for review now
       description: >
@@ -9077,6 +9608,19 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+        '503':
+          description: >
+            AI extras are paused for the moment (`ATLAS-SYS-012`): ATLAS has switched AI off, for this
+            organisation or for everyone, or the platform's daily cap is reached. Not about the plan, the
+            payment or anyone's allowance, so a message must not say it is. The original stays where it is;
+            `Retry-After` is a suggestion, not a promise.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
         '500':
           $ref: '#/components/responses/InternalError'
   /o/{orgId}/resources/{resourceId}/annotations:
@@ -9096,7 +9640,7 @@ paths:
           format: uuid
         description: The resource being read
     get:
-      x-atlas-pagination: deferred-j3
+      x-atlas-pagination: capped-2000
       operationId: listAnnotations
       summary: List the caller's own notes and highlights
       description: >
@@ -9116,6 +9660,18 @@ paths:
         - the previous version keeps them.
       tags: [personalisation]
       parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 2000
+            default: 2000
+          description: >
+            The most notes to return (since 1.13.0). The default is the maximum, so a caller that
+            sends none gets what it always got, up to this bound: the response can no longer grow
+            with the data behind it.
         - name: search
           in: query
           required: false
@@ -9646,6 +10202,12 @@ paths:
             and it clears tomorrow rather than in seconds.
 
 
+            `.../problems/ai-paused` (`ATLAS-SYS-012`, HTTP 503) - ATLAS has paused AI
+            extras for the moment, for this organisation or for everyone. NOT about the
+            plan, the payment or any allowance, and a message shown must not say it is.
+            Asked before either allowance, because while AI is paused nothing is spent.
+
+
             `.../problems/personal-ai-budget-exhausted` (`ATLAS-BIL-002`) - the
             CALLER's OWN daily allowance is spent, and their organisation may
             have plenty left. Also clears tomorrow. WHEN BOTH
@@ -9680,6 +10242,19 @@ paths:
         '451':
           description: >
             The file has been taken down (`ATLAS-CNT-016`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: >
+            AI extras are paused for the moment (`ATLAS-SYS-012`): ATLAS has switched AI off, for this
+            organisation or for everyone, or the platform's daily cap is reached. Not about the plan, the
+            payment or anyone's allowance, so a message must not say it is. The original stays where it is;
+            `Retry-After` is a suggestion, not a promise.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
           content:
             application/problem+json:
               schema:
@@ -10289,6 +10864,47 @@ paths:
                 $ref: '#/components/schemas/Problem'
         '500':
           $ref: '#/components/responses/InternalError'
+  /o/{orgId}/reading-minute:
+    parameters:
+      - name: orgId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: The organisation's id
+    post:
+      operationId: recordReadingMinute
+      tags: [progress]
+      summary: Records one minute of reading
+      description: >
+        The reader's heartbeat: ATLAS's own web app sends one a minute while the reader is open, visible
+        and in use. It counts a minute of reading on today's UTC day, platform-wide, and never against
+        the person - there is no body, and the route stores neither the lecture nor the time. It also
+        marks the caller's own learning day, so a day spent reading shows on their activity calendar.
+
+
+        **`204` whether or not it was counted.** A minute is counted at most once every 50 seconds per
+        person; a sooner one is accepted and dropped, so a second tab inflates nothing.
+      responses:
+        '204':
+          description: Recorded, or dropped as too soon after the last one
+        '401':
+          description: Missing/unusable access token (`ATLAS-SYS-002`)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '403':
+          description: Not a member / no such org (`ATLAS-ORG-002`)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          $ref: '#/components/responses/Throttled'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /o/{orgId}/resources/{resourceId}/progress:
     parameters:
       - name: orgId
@@ -10456,7 +11072,7 @@ paths:
           format: uuid
         description: The lecture whose sections are being reported
     get:
-      x-atlas-pagination: deferred-j3
+      x-atlas-pagination: capped-300
       operationId: getSectionMastery
       tags: [progress]
       summary: What the caller knows about each section of this lecture
@@ -10489,6 +11105,19 @@ paths:
         **No AI call is made**: this is arithmetic over
         the learner's own attempts, so it costs nothing and cannot fail on a
         provider outage.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 300
+            default: 300
+          description: >
+            The most sections to return (since 1.13.0). The default is the maximum, so a caller that
+            sends none gets what it always got, up to this bound: the response can no longer grow
+            with the data behind it.
       responses:
         '200':
           description: One entry per section this learner has attempted; empty if none
@@ -10555,7 +11184,7 @@ paths:
           which, and guessing would silently pick somebody's other course.
           Absent, the recommender answers within this document only.
     get:
-      x-atlas-pagination: deferred-j3
+      x-atlas-pagination: capped-3
       operationId: getRecommendations
       tags: [progress]
       summary: One to three next steps, each with its reason
@@ -10650,7 +11279,7 @@ paths:
           default: 5
         description: The most to return. The practice dashboard shows five.
     get:
-      x-atlas-pagination: deferred-j3
+      x-atlas-pagination: capped-20
       operationId: getDueForReview
       tags: [progress]
       summary: The sections the caller most needs to go back over
@@ -10840,7 +11469,7 @@ paths:
           format: uuid
         description: The organisation's id
     get:
-      x-atlas-pagination: deferred-j3
+      x-atlas-pagination: capped-3
       operationId: getLearnerWideNextSteps
       tags: [progress]
       summary: What to do next, across everything the caller is studying
@@ -10899,7 +11528,7 @@ paths:
           format: uuid
         description: The organisation's id
     get:
-      x-atlas-pagination: deferred-j3
+      x-atlas-pagination: capped-200
       operationId: listGoals
       tags: [progress]
       summary: The caller's goals in this org
@@ -10914,6 +11543,19 @@ paths:
 
         Private to the learner: no org admin surface reaches this, and there is no parameter
         that could name another learner.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 200
+          description: >
+            The most goals to return (since 1.13.0). The default is the maximum, so a caller that
+            sends none gets what it always got, up to this bound: the response can no longer grow
+            with the data behind it.
       responses:
         '200':
           description: The caller's goals; an empty array is a real answer
@@ -11075,7 +11717,7 @@ paths:
           $ref: '#/components/responses/InternalError'
   /me/reminders:
     get:
-      x-atlas-pagination: deferred-j3
+      x-atlas-pagination: capped-2
       operationId: listReminders
       tags: [progress]
       summary: The caller's study reminders
@@ -11276,6 +11918,25 @@ paths:
         Read-only. Choosing a plan is the checkout's job; editing the
         catalogue is a super admin's.
       tags: [billing]
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 50
+          description: How many plans one page holds (since 1.13.0).
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 512
+          description: >
+            The `nextCursor` of the previous page (since 1.13.0). Opaque: an unreadable one starts
+            from the first page.
       responses:
         '200':
           description: The offerable plans in display order.
@@ -11558,6 +12219,17 @@ paths:
                 $ref: '#/components/schemas/Problem'
         '429':
           $ref: '#/components/responses/Throttled'
+        '503':
+          description: >
+            ATLAS is in maintenance mode (`ATLAS-SYS-014`), which refuses new work like this and keeps
+            reading going. Try again later; `GET /platform/status` says whether the window is still on.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
         '500':
           $ref: '#/components/responses/InternalError'
   /o/{orgId}/billing/usage/me:
@@ -11655,6 +12327,25 @@ paths:
         that a rewrite exists rather than how often an org was served it. Both
         are deferred rather than invented here.
       tags: [billing]
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 200
+          description: How many members one page holds (since 1.13.0).
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 512
+          description: >
+            The `nextCursor` of the previous page (since 1.13.0). Opaque: an unreadable one starts
+            from the first page.
       responses:
         '200':
           description: The org's usage today.
@@ -11863,6 +12554,17 @@ paths:
                 $ref: '#/components/schemas/Problem'
         '429':
           $ref: '#/components/responses/Throttled'
+        '503':
+          description: >
+            ATLAS is in maintenance mode (`ATLAS-SYS-014`), which refuses new work like this and keeps
+            reading going. Try again later; `GET /platform/status` says whether the window is still on.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
         '500':
           $ref: '#/components/responses/InternalError'
     delete:
@@ -11959,6 +12661,17 @@ paths:
                 $ref: '#/components/schemas/Problem'
         '429':
           $ref: '#/components/responses/Throttled'
+        '503':
+          description: >
+            ATLAS is in maintenance mode (`ATLAS-SYS-014`), which refuses new work like this and keeps
+            reading going. Try again later; `GET /platform/status` says whether the window is still on.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
         '500':
           $ref: '#/components/responses/InternalError'
   /o/{orgId}/billing/checkout/gateway-switch:
@@ -12034,6 +12747,17 @@ paths:
                 $ref: '#/components/schemas/Problem'
         '429':
           $ref: '#/components/responses/Throttled'
+        '503':
+          description: >
+            ATLAS is in maintenance mode (`ATLAS-SYS-014`), which refuses new work like this and keeps
+            reading going. Try again later; `GET /platform/status` says whether the window is still on.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
         '500':
           $ref: '#/components/responses/InternalError'
   /billing/checkout/{orgId}/{redirectToken}/start:
@@ -12752,7 +13476,7 @@ paths:
           format: uuid
         description: The organisation's id
     get:
-      x-atlas-pagination: deferred-j3
+      x-atlas-pagination: capped-50
       operationId: listDiscussionThreads
       summary: The organisation's discussion threads
       description: >
@@ -13617,7 +14341,7 @@ paths:
           format: uuid
         description: The organisation's id
     get:
-      x-atlas-pagination: deferred-j3
+      x-atlas-pagination: capped-20
       operationId: listThreadPolls
       summary: The polls raised inside one discussion thread
       description: >
@@ -14067,7 +14791,7 @@ paths:
           format: uuid
         description: The organisation's id
     get:
-      x-atlas-pagination: deferred-j3
+      x-atlas-pagination: capped-50
       operationId: listReviewQueue
       summary: Work the caller may claim
       description: >
@@ -14126,7 +14850,7 @@ paths:
           format: uuid
         description: The organisation's id
     get:
-      x-atlas-pagination: deferred-j3
+      x-atlas-pagination: capped-50
       operationId: listMySubmissions
       summary: The caller's own offered work
       tags:
@@ -14282,7 +15006,7 @@ paths:
           format: uuid
         description: The organisation's id
     get:
-      x-atlas-pagination: deferred-j3
+      x-atlas-pagination: capped-50
       operationId: listMyReviews
       summary: The reviews the caller is writing
       tags:
@@ -14333,7 +15057,7 @@ paths:
           format: uuid
         description: The organisation's id
     get:
-      x-atlas-pagination: deferred-j3
+      x-atlas-pagination: capped-50
       operationId: listReviewsOfMyWork
       summary: The reviews of the caller's own work
       tags:
@@ -15027,6 +15751,17 @@ components:
           enum: [ok]
         version:
           type: string
+    PlatformStatus:
+      type: object
+      required: [maintenance]
+      properties:
+        maintenance:
+          type: boolean
+          description: >
+            ATLAS is in maintenance mode: creating or finishing an upload, checkout and plan changes, creating
+            an organisation and public-API work are refused with `ATLAS-SYS-014`. Reading, plain content,
+            cached transforms, progress, notes, quiz answers, the forum, sign-in and payment callbacks all keep
+            working.
     RegisterRequest:
       type: object
       required: [email, password, acceptTerms]
@@ -15320,6 +16055,22 @@ components:
           type: string
           format: email
           maxLength: 255
+    DataRequestLinkRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+    DataRequestConfirmRequest:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          maxLength: 100
+          description: The secret from the emailed link.
     ResetPasswordRequest:
       type: object
       required: [token, newPassword]
@@ -15489,6 +16240,14 @@ components:
           description: >
             A CURRENT second-factor code - TOTP or backup; factor
             possession is the proof, not the password
+    ErasureRequestResponse:
+      type: object
+      required: [requestedAt]
+      properties:
+        requestedAt:
+          type: string
+          format: date-time
+          description: When the open request was made.
     MeResponse:
       type: object
       required:
@@ -18164,6 +18923,11 @@ components:
         not enforced.
       required: [resourceId, title, versions, orgStorageBytes]
       properties:
+        nextCursor:
+          type: [string, 'null']
+          description: >
+            The opaque position to continue `versions` from, or null at the end (since 1.13.0). Pass it
+            back as `cursor` for the next page; the other fields are the same on every page.
         resourceId:
           type: string
           format: uuid
@@ -18711,6 +19475,11 @@ components:
       description: The members screen payload - members, seat usage, and the caller's standing
       required: [members, seats, viewer]
       properties:
+        nextCursor:
+          type: [string, 'null']
+          description: >
+            The opaque position to continue `members` from, or null at the end (since 1.13.0). Pass it
+            back as `cursor` for the next page; the other fields are the same on every page.
         members:
           type: array
           items:
@@ -21354,15 +22123,25 @@ components:
         controls, and an existing one is never renamed.
     AllowanceState:
       type: string
-      enum: [under, near, over, suspended, unknown]
+      enum: [under, near, over, suspended, paused, unknown]
       description: >
         Where an org - or the caller themselves - stands against an AI ceiling.
 
 
-        FIVE VALUES, AND A BOOLEAN NEVER COULD HAVE CARRIED THIS.
+        SIX VALUES, AND A BOOLEAN NEVER COULD HAVE CARRIED THIS.
         Three say where an org stands against its ceiling, one says the org has
-        stopped paying, and the last says the question could not be answered -
-        which is an outcome of its own rather than a variant of the others.
+        stopped paying, one says ATLAS has paused AI for now, and the last says the
+        question could not be answered - which is an outcome of its own rather than
+        a variant of the others.
+
+
+        `paused` - AI extras are switched off by ATLAS for the moment: an operator's
+        switch, for this org or for everyone, or the platform's daily cap. It is
+        NOT about the org's plan, payment or allowance, and a client must not say it
+        is: no billing link, no "your organisation", no return date. Learning
+        continues on cached and plain content. `suspended` wins when both are true,
+        because it is the lasting cause. A client that predates this value maps it
+        down to `unknown` and renders nothing.
 
 
         `suspended` - AI extras are off because the organisation has stopped
@@ -21860,6 +22639,11 @@ components:
         whole feature set, so nothing here may name a feature family.
       required: [plans, currentCode, gateways]
       properties:
+        nextCursor:
+          type: [string, 'null']
+          description: >
+            The opaque position to continue `plans` from, or null at the end (since 1.13.0). Pass it
+            back as `cursor` for the next page; the other fields are the same on every page.
         plans:
           type: array
           description: >
@@ -22031,13 +22815,21 @@ components:
           tokensToday,
           allowanceTokens,
           costUsdToday,
+          unmeasuredCallsToday,
           storageUsedBytes,
           storageCapBytes,
           seatsUsed,
           seatLimit,
           members,
+          membersState,
+          minimumGroupSize,
         ]
       properties:
+        nextCursor:
+          type: [string, 'null']
+          description: >
+            The opaque position to continue `members` from, or null at the end (since 1.13.0). Pass it
+            back as `cursor` for the next page; the other fields are the same on every page.
         planName:
           type: [string, 'null']
           description: Null where the org has no plan row
@@ -22056,6 +22848,13 @@ components:
             never a bill - a cost is recorded only where the gateway priced it, and
             the re-presentation path records none, so this sums what was measured and omits the
             rest. Decimal string, not a float.
+        unmeasuredCallsToday:
+          type: integer
+          format: int64
+          description: >
+            Calls today whose cost was not measured, and so are not in `costUsdToday`. A
+            `costUsdToday` of zero beside a non-zero count means "not priced", never "free". A
+            lower bound: a day's record that mixes priced and unpriced calls counts as priced.
         storageUsedBytes:
           type: integer
           format: int64
@@ -22077,9 +22876,22 @@ components:
             One row per member who spent something today. Members who spent
             nothing are ABSENT rather than zero - a zero row is still a statement
             about a named person's day. No timestamps at any grain finer than the
-            day: usage is recorded per day with no time of day, deliberately.
+            day: usage is recorded per day with no time of day, deliberately. EMPTY when
+            `membersState` is `WITHHELD`.
           items:
             $ref: '#/components/schemas/MemberUsageLine'
+        membersState:
+          $ref: '#/components/schemas/MemberListState'
+        minimumGroupSize:
+          type: integer
+          description: The fewest people the per-member list must cover before it is shown.
+    MemberListState:
+      type: string
+      enum: [MEASURED, WITHHELD]
+      description: >
+        Whether an organisation's per-member usage list is shown. `WITHHELD` when fewer people
+        spent today than `minimumGroupSize`: a list that short is named people's days rather than
+        an aggregate, so `members` is empty. It does not say how many people there were.
     MemberUsageLine:
       type: object
       required: [userId, name, tokens, requests]

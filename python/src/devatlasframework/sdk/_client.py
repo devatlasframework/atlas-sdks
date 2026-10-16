@@ -108,20 +108,36 @@ class KeyClient:
             self._transport.call("describeKey", {"credential": self._credential}),
         )
 
-    def list_end_users(self) -> EndUserPage:
-        """Every learner of yours linked to the application this key belongs to.
+    def list_end_users(self, *, limit: int | None = None, cursor: str | None = None) -> EndUserPage:
+        """The learners of yours linked to the application this key belongs to, newest first.
 
-        Needs `end-users:manage`.
+        One page at a time. Needs `end-users:manage`.
+
+        Args:
+            limit: Learners per page, 1-200. Default `200`.
+            cursor: A previous page's `nextCursor`, for the page after it. Omitted means the
+                first page; a null `nextCursor` means you have them all.
 
         Example:
             ```python
-            active = [one for one in atlas.list_end_users()["items"] if one["active"]]
+            cursor = None
+            while True:
+                page = atlas.list_end_users(cursor=cursor)
+                active = [one for one in page["items"] if one["active"]]
+                cursor = page["nextCursor"]
+                if cursor is None:
+                    break
             ```
         """
         return cast(
             EndUserPage,
             self._transport.call(
-                "listEndUsers", {"path": {"orgId": self._org()}, "credential": self._credential}
+                "listEndUsers",
+                {
+                    "path": {"orgId": self._org()},
+                    "query": {"limit": limit, "cursor": cursor},
+                    "credential": self._credential,
+                },
             ),
         )
 

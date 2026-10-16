@@ -143,9 +143,28 @@ class TestEachMethod:
         sent = [name for name, _ in parse_qsl(urlsplit(server.received[0].target).query)]
         assert sent == list(declared)
 
+    def test_list_end_users_takes_exactly_the_query_parameters_the_contract_declares(
+        self, loopback: Start
+    ) -> None:
+        declared = OPERATIONS["listEndUsers"].query_params
+        keyword = [
+            name
+            for name, parameter in inspect.signature(KeyClient.list_end_users).parameters.items()
+            if parameter.kind is inspect.Parameter.KEYWORD_ONLY
+        ]
+        assert keyword == [snake(name) for name in declared]
+
+        server = loopback(Reply(200, body={"items": [], "nextCursor": None}))
+        KeyClient(base_url=server.base_url, api_key=KEY, org_id=ORG).list_end_users(
+            limit=50, cursor="c"
+        )
+        sent = [name for name, _ in parse_qsl(urlsplit(server.received[0].target).query)]
+        assert sent == list(declared)
+
     def test_no_other_operation_takes_a_query_parameter(self) -> None:
+        # listEndUsers pages since contract 1.13.0; list_end_users binds both of its parameters.
         with_query = sorted(op_id for op_id, op in OPERATIONS.items() if op.query_params)
-        assert with_query == ["listResources"]
+        assert with_query == ["listEndUsers", "listResources"]
 
 
 class TestTheRetryClassOfEachOperation:

@@ -7,9 +7,9 @@ matching what this stamp names.
 
 | Field | Value |
 | --- | --- |
-| Contract version | `1.7.0` |
-| Source repository | `atlas-docs` |
-| Source commit | `e66cf708fe43dd07bbc59836ec68c459cf59921e` |
-| Source commit date | `2026-09-28` |
-| `contract/openapi.yaml` sha256 | `c86ec2657cd5a850befd8cc0f7e7b746d3ae3d66fe45dd85727ca09e2804d6ec` |
-| Operations compared with | none: this copy is the published mirror itself |
+| Contract version | `1.13.0` |
+| Source repository | `atlas` |
+| Source commit | `30cd6c36671c2c953ae9365c453108275562d1f8` |
+| Source commit date | `2026-10-16` |
+| `contract/openapi.yaml` sha256 | `996b85354bbc6d71069b0280514bb1d1ac23dba8c5da108505dfc3bf94e09d87` |
+| Operations compared with | atlas-docs `origin/develop`, contract `1.12.0`: the same 218 operations, reachable with the same permissions, and the same webhook events |
