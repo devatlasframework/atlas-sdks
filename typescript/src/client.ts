@@ -22,6 +22,10 @@ export type Resource = Schemas['ResourceResponse'];
 export type ResourceList = Schemas['ResourceListResponse'];
 export type ResourceDownload = Schemas['ResourceDownloadResponse'];
 export type ListResourcesQuery = NonNullable<operations['listResources']['parameters']['query']>;
+export type ListEndUsersQuery = NonNullable<operations['listEndUsers']['parameters']['query']>;
+
+/** Options for `listEndUsers`: one page's size and position, beside the call's own options. */
+export interface ListEndUsersOptions extends CallOptions, ListEndUsersQuery {}
 
 /** Options for `linkEndUser`. */
 export interface LinkEndUserOptions extends CallOptions {
@@ -117,19 +121,29 @@ export class KeyClient {
   }
 
   /**
-   * Every learner of yours linked to the application this key belongs to. Needs `end-users:manage`.
+   * The learners of yours linked to the application this key belongs to, newest first, one page at
+   * a time. Needs `end-users:manage`.
+   *
+   * A page holds up to `limit` (1-200, default 200). When `nextCursor` is not null, pass it back
+   * as `cursor` for the next page; null means you have them all.
    *
    * @example
    * ```ts
-   * const { items } = await atlas.listEndUsers();
-   * const active = items.filter((endUser) => endUser.active);
+   * let cursor: string | undefined;
+   * do {
+   *   const page = await atlas.listEndUsers({ cursor });
+   *   for (const endUser of page.items) if (endUser.active) console.log(endUser.id);
+   *   cursor = page.nextCursor ?? undefined;
+   * } while (cursor);
    * ```
    */
-  async listEndUsers(options: CallOptions = {}): Promise<EndUserPage> {
+  async listEndUsers(options: ListEndUsersOptions = {}): Promise<EndUserPage> {
+    const { limit, cursor, ...call } = options;
     return this.#transport.call('listEndUsers', {
-      path: { orgId: await this.#org(options) },
+      path: { orgId: await this.#org(call) },
+      query: { limit, cursor },
       credential: this.#credential,
-      signal: options.signal,
+      signal: call.signal,
     });
   }
 
