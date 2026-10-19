@@ -39,7 +39,7 @@
     "smoke:pack": "node scripts/smoke-pack.mjs"
   },
   "devDependencies": {
-    "@types/node": "22.20.4",
+    "@types/node": "26.6.5",
     "openapi-typescript": "7.13.0",
     "prettier": "3.9.5",
     "typescript": "5.9.3",
