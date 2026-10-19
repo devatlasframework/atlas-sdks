@@ -18,12 +18,28 @@ jobs:
       contents: read
       pull-requests: write # the action reads PR commits and comments findings
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Every `uses:` here was already pinned by commit SHA; this keeps it so (J4 criterion 12,
+  # ATLAS-735; #247). The script refuses a tag pin, or a SHA whose comment names a moving major
+  # rather than the release it was resolved from; its self-test plants a tag pin and must catch
+  # it. The same script runs in atlas, atlas-infra and atlas-docs; Dependabot
+  # (.github/dependabot.yml) proposes the bumps.
+  action-pins:
+    name: action-pins
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - run: node scripts/ci/check-action-pins.mjs --self-test
+      - run: node scripts/ci/check-action-pins.mjs
 
   # The contract every SDK is generated from: the vendored copy is the one its stamp names, and the
   # surface derived from it is current. Language-neutral, so it gates every SDK at once.
@@ -31,8 +47,8 @@ jobs:
     name: contract
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm
@@ -43,6 +59,10 @@ jobs:
         run: node tools/verify-contract.mjs
       - name: The derived surface is current
         run: node tools/derive-surface.mjs --check
+      # J4 criterion 14 (ATLAS-735): every control SECURITY.md claims as built names a path, or a
+      # path#symbol, that exists in this tree. No SDK tag is cut while SECURITY.md says anything false.
+      - run: node scripts/security/check-security-claims.mjs --self-test
+      - run: node scripts/security/check-security-claims.mjs SECURITY.md
 
   # The TypeScript SDK, on the oldest Node it promises and the current one. The live suite is not
   # here: no environment has a public host, so it runs where the API does and its output is quoted
@@ -58,8 +78,8 @@ jobs:
       run:
         working-directory: typescript
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ matrix.node }}
           cache: npm
@@ -93,7 +113,7 @@ jobs:
       run:
         working-directory: python
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           version: '0.12.5'

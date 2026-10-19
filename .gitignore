@@ -31,3 +31,7 @@ Thumbs.db
 
 # Claude Code (personal)
 .claude/settings.local.json
+
+# J4-F41: a step's working notes, scan reports and the synthetic accounts' tokens live in
+# .qa-scratch/<ticket>/ and are never committed.
+.qa-scratch/

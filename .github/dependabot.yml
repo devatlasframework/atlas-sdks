@@ -1,0 +1,81 @@
+# Dependabot keeps the pins current (J4 criterion 12, ATLAS-735; #247): every `uses:` here is pinned
+# by commit SHA (scripts/ci/check-action-pins.mjs), and a pin nobody moves rots. Each bump is a
+# reviewed PR into develop with a Conventional Commit title; minor and patch updates are grouped per
+# ecosystem, a major arrives alone; a 7-day cooldown keeps a brand-new release from being proposed
+# before it has been public for a week (security updates are not delayed).
+#
+# Neither SDK has a runtime dependency (a promise check-promises holds); what these entries move is
+# the build and test tooling behind them.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Asia/Colombo
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      actions-minor-patch:
+        update-types: [minor, patch]
+
+  # The TypeScript SDK's dev tooling (typescript/package-lock.json).
+  - package-ecosystem: npm
+    directory: /typescript
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Asia/Colombo
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      typescript-minor-patch:
+        update-types: [minor, patch]
+
+  # The contract tooling (tools/package-lock.json).
+  - package-ecosystem: npm
+    directory: /tools
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Asia/Colombo
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      tools-minor-patch:
+        update-types: [minor, patch]
+
+  # The Python SDK's dev tooling (python/uv.lock). build-constraints.txt, the hash-pinned build
+  # backend, is not read by this entry and is moved by hand with the lock.
+  - package-ecosystem: uv
+    directory: /python
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Asia/Colombo
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      python-minor-patch:
+        update-types: [minor, patch]
