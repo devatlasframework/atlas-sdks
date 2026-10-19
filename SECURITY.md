@@ -18,12 +18,12 @@ An SDK is released as a **GitHub Release of this repository**, tagged `typescrip
 `python-v<version>`, with the package attached and its sha256 in the release notes. Neither SDK is
 on npm or PyPI, and neither will be before an ATLAS environment has a public address.
 
-| Version                              | Supported          | Notes                                                         |
-| ------------------------------------ | ------------------ | ------------------------------------------------------------- |
-| Latest release of each SDK           | :white_check_mark: | The newest `typescript-v…` and `python-v…` release            |
-| Release candidates (`…-rc.N`)        | :x:                | Pre-releases for testing only; install the release instead    |
-| `develop`                            | :white_check_mark: | Unreleased source — report anything you find here             |
-| Any package on a registry            | :x:                | **Not ours.** Nothing bearing the ATLAS name is on a registry |
+| Version                       | Supported          | Notes                                                         |
+| ----------------------------- | ------------------ | ------------------------------------------------------------- |
+| Latest release of each SDK    | :white_check_mark: | The newest `typescript-v…` and `python-v…` release            |
+| Release candidates (`…-rc.N`) | :x:                | Pre-releases for testing only; install the release instead    |
+| `develop`                     | :white_check_mark: | Unreleased source — report anything you find here             |
+| Any package on a registry     | :x:                | **Not ours.** Nothing bearing the ATLAS name is on a registry |
 
 Each SDK versions independently under SemVer, and **only the most recent released minor of each SDK
 receives security fixes**. Pinning an older minor means pinning its bugs; upgrade to receive fixes.
@@ -167,6 +167,52 @@ We practise **coordinated disclosure**.
   to be named.
 - Please do not publish before the advisory goes out. If you have a hard publication deadline, say
   so in your first message and we will work to it.
+
+---
+
+## What is in place
+
+What the SDKs themselves do to keep your credential where it belongs, and what guards this
+repository. Every control is a row below, and each row names the code, the test or the CI step that
+holds it. `scripts/security/check-security-claims.mjs` reads the table in CI and fails a built row
+whose evidence does not exist. Paths are from this repository's root.
+
+<!-- claims:start -->
+
+| Control                                                                                                                                                                                            | Status | Evidence                                                                                                                                                                                                                                                                                                                                         |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Transport.** Both SDKs refuse a base address that is not `https`; plain `http` is accepted only for a loopback address                                                                           | built  | `typescript/src/transport.ts#must use https` `typescript/test/unit/transport.test.ts#refuses plain http anywhere but a loopback address` `python/src/devatlasframework/sdk/_transport.py#must use https` `python/tests/unit/test_transport.py#test_refuses_plain_http_anywhere_but_a_loopback_address`                                           |
+| **Transport.** A base address carrying a user name, a query or the server path is refused before anything is sent                                                                                  | built  | `typescript/test/unit/transport.test.ts#refuses an address that already ends in the server path, a query, or a user name` `python/tests/unit/test_transport.py#test_refuses_the_server_path_a_query_a_fragment_or_a_user_name`                                                                                                                   |
+| **TLS.** The Python SDK verifies the certificate and host name with the platform's default context unless you pass a context of your own, and refuses an extra HTTPS handler that could replace it | built  | `python/src/devatlasframework/sdk/_transport.py#ssl.create_default_context()` `python/src/devatlasframework/sdk/_transport.py#handlers must not include an HTTPS handler`                                                                                                                                                                        |
+| **Redirects.** Neither SDK follows a redirect, so the `Authorization` header only ever goes to the address you configured; the Python SDK refuses a handler that would follow one                  | built  | `typescript/src/transport.ts#redirect: 'manual'` `typescript/test/unit/transport.test.ts#is never followed, so the key never reaches another address` `python/tests/unit/test_transport.py#test_is_never_followed_so_the_key_never_reaches_another_address` `python/tests/unit/test_transport.py#test_handler_that_follows_redirects_is_refused` |
+| **Credentials.** An error never carries the key, in its message, its cause or anything else on it, and a key a header cannot carry is refused without being repeated                               | built  | `typescript/src/transport.ts#function safeCause` `typescript/test/unit/transport.test.ts#never carries the credential, in the message or anywhere on the error` `python/tests/unit/test_transport.py#test_never_carries_the_credential` `python/tests/unit/test_transport.py#test_a_credential_a_header_cannot_carry_without_repeating_it`       |
+| **Credentials.** The TypeScript client keeps the key in a private field, so printing or serialising the client does not show it                                                                    | built  | `typescript/src/client.ts#readonly #apiKey`                                                                                                                                                                                                                                                                                                      |
+| **Webhooks.** A delivery is verified by HMAC compared in constant time, inside a 300-second window, and a changed byte, an old delivery or the wrong secret is refused                             | built  | `typescript/src/webhooks.ts#timingSafeEqual` `typescript/test/unit/webhooks.test.ts#is refused once it is older than the window` `python/src/devatlasframework/sdk/_webhooks.py#hmac.compare_digest` `python/tests/unit/test_webhooks.py#test_is_refused_with_one_byte_of_the_body_changed`                                                      |
+| **Dependencies.** Neither SDK has a runtime dependency; for Python, CI fails the build if one appears                                                                                              | built  | `python/scripts/check_promises.py#No runtime dependencies` `typescript/package.json`                                                                                                                                                                                                                                                             |
+| **Build.** The Python package is built against hashed build constraints                                                                                                                            | built  | `python/build-constraints.txt` `.github/workflows/ci.yml#--require-hashes`                                                                                                                                                                                                                                                                       |
+| **Contract.** Every SDK is generated from the vendored contract its stamp names, and CI fails a copy that no longer matches                                                                        | built  | `tools/verify-contract.mjs` `.github/workflows/ci.yml#node tools/verify-contract.mjs`                                                                                                                                                                                                                                                            |
+| **Supply chain.** Every workflow action is pinned by commit SHA                                                                                                                                    | built  | `scripts/ci/check-action-pins.mjs` `.github/workflows/ci.yml#node scripts/ci/check-action-pins.mjs`                                                                                                                                                                                                                                              |
+| **Supply chain.** Dependabot proposes updates for the actions, both npm trees and the Python lockfile                                                                                              | built  | `.github/dependabot.yml`                                                                                                                                                                                                                                                                                                                         |
+| **Secrets.** gitleaks scans every pull request, and a pre-commit hook scans locally; the one allowed finding is pinned by fingerprint, never by value                                              | built  | `.github/workflows/ci.yml#gitleaks/gitleaks-action` `.githooks/pre-commit` `.gitleaksignore`                                                                                                                                                                                                                                                     |
+| **This table.** CI fails a built row here whose evidence does not exist                                                                                                                            | built  | `scripts/security/check-security-claims.mjs#export function check` `.github/workflows/ci.yml#check-security-claims.mjs SECURITY.md`                                                                                                                                                                                                              |
+
+<!-- claims:end -->
+
+What the table does not say:
+
+- **The TypeScript SDK sets no TLS option of its own.** It calls Node's built-in `fetch`, which
+  verifies certificates unless the process itself is told not to (`NODE_TLS_REJECT_UNAUTHORIZED=0`
+  turns that off for everything in it, and is yours to never set).
+- **Neither SDK writes logs.** Neither package calls a logger or the console; what reaches your logs
+  is what your own code writes, which is why _Using the SDKs Safely_ below says never to log the
+  request headers.
+- **A release is assembled by hand.** The maintainer builds the package, attaches it to a GitHub
+  Release and writes its sha256 into the notes; no workflow publishes, and nothing signs the file.
+- **Required checks.** `gitleaks`, `contract` and both SDKs' jobs block a merge. `action-pins` runs on
+  every pull request and is written to be required; adding it to the branch ruleset is the
+  maintainer's act.
+- **The service behind the SDKs** is covered by the `atlas` policy, which this repository's advisory
+  link reaches. Nothing here is owed to a later plan step: every row above is built.
 
 ---
 
