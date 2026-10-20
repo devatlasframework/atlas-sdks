@@ -42,6 +42,16 @@ updates:
     groups:
       typescript-minor-patch:
         update-types: [minor, patch]
+    # Two majors that cannot land as a version bump alone (#18, #20):
+    #   typescript - openapi-typescript declares peer typescript@^5.x, so npm refuses a newer major
+    #   before anything compiles; it moves when the generator supports it;
+    #   @types/node - the SDK supports Node >= 22 and builds on 22, so its types stay on the oldest
+    #   Node it promises, or code could call an API Node 22 lacks without a compile error.
+    ignore:
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+      - dependency-name: '@types/node'
+        update-types: [version-update:semver-major]
 
   # The contract tooling (tools/package-lock.json).
   - package-ecosystem: npm
