@@ -44,10 +44,10 @@ include = ["src/", "README.md", "LICENSE", "pyproject.toml"]
 
 [dependency-groups]
 dev = [
-  "datamodel-code-generator==0.83.0",
+  "datamodel-code-generator==0.86.0",
   "mypy==2.4.0",
   "pytest==9.1.1",
-  "ruff==0.17.0",
+  "ruff==0.17.1",
 ]
 
 [tool.uv]
