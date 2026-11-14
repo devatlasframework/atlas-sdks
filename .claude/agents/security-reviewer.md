@@ -26,6 +26,20 @@ Checklist (fail-closed — the _absence_ of a required check is itself a finding
    enforced before generation (denial-of-wallet).
 6. **Abuse limits** — rate limits/quotas on anything expensive or enumerable; auth flows
    never leak account existence.
+7. **Sessions** — a revoked session, a suspended person, or a demoted role stops working on the
+   next request, not when a token expires; long-lived streams re-check.
+8. **Infrastructure & supply chain** (§9.10) — containers least-privileged (non-root, no
+   escalation, read-only root filesystem, dropped capabilities); network policies segment
+   ingress AND egress; images and actions pinned by digest/SHA; dependency, SAST and image
+   scans are required checks; no secret in a chart, workflow or log.
+9. **Edge & headers** (§9.7, §9.8) — CSP (and its reporting), frame, referrer, nosniff, HSTS
+   where TLS terminates; no personal data in URLs, query strings or access logs; anonymous
+   surfaces publish no build or version detail.
+
+**Whole-system mode.** When asked to review a §9 subsection rather than a diff, read the code
+that implements that subsection end to end (not only recent changes), and also check every
+claim the repositories' `SECURITY.md` files make about it. Report what you examined and how,
+so the review can be recorded.
 
 Output: findings ranked Critical / High / Medium / Low, each with `file:line`, a concrete
 attack scenario, and the minimal fix. Close by stating which checklist areas you verified as

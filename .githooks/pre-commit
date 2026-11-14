@@ -14,11 +14,21 @@ staged=$(git diff --cached --name-only --diff-filter=ACM "$against")
 fail=0
 
 # --- 1. Secret scan (always on) ---------------------------------------------
-pattern='-----BEGIN [A-Z ]*PRIVATE KEY-----|AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|postgres(ql)?://[^/ :]+:[^@ ]+@'
+# ATLAS-605: `atl_sk_(live|test)_` is ATLAS's own key prefix (section 11.3). Added here as
+# well as in .gitleaks.toml because the two gates catch different things: CI scans the whole
+# history of a PR and this one refuses the commit, which is the only one that stops a secret
+# reaching a remote at all. Note the existing alternation matches `sk-` and NOT `sk_`, so
+# neither ATLAS keys nor Stripe's would have been caught here before this line.
+pattern='-----BEGIN [A-Z ]*PRIVATE KEY-----|AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9_-]{20,}|atl_sk_(live|test)_[A-Za-z0-9_-]{43}|gh[pousr]_[A-Za-z0-9]{20,}|postgres(ql)?://[^/ :]+:[^@ ]+@'
 for f in $staged; do
   case "$f" in
     *.png|*.jpg|*.jpeg|*.gif|*.ico|*.pdf|*.zip|*.jar|*.woff|*.woff2|*.svg) continue ;;
     .githooks/*|.claude/hooks/*) continue ;;
+    # .gitleaks.toml only, because it carries the PATTERN itself. Nothing else needs an
+    # exemption: the ATLAS alternation below requires a 43-character tail, and every place
+    # that documents the vocabulary quotes the prefix alone. Measured, not assumed - and an
+    # exemption that is not needed is one somebody widens later (ATLAS-605 review).
+    .gitleaks.toml) continue ;;
   esac
   if git show ":$f" | grep -nE -e "$pattern" >/dev/null 2>&1; then
     echo "pre-commit: possible secret in $f - remove it before committing:" >&2
@@ -32,11 +42,29 @@ done
 # build run in CI (and via the /pre-commit-check command).
 
 # Prettier over staged TS/JS/JSON/YAML/MD (skips api + ingestion trees).
+#
+# `--end-of-line auto` is what makes this hook usable on Windows (#299). With
+# `core.autocrlf=true` the working tree is CRLF, prettier's default `endOfLine: lf`
+# reports every one of those files as unformatted, and the advice printed below -
+# `pnpm format` - rewrites the WHOLE repo rather than the staged change. The flag
+# accepts the checkout's own ending here and changes nothing else: `.gitattributes`
+# still decides what is stored, the index still holds LF, and CI still checks LF
+# under the unmodified `format:check`.
+#
+# Deliberately NOT in `.prettierrc`, per #299's own analysis: that would relax the
+# CI check too, trading a real guarantee for local convenience.
+#
+# `-n 40` IS NOT TUNING - IT IS THE DIFFERENCE BETWEEN THIS HOOK WORKING AND NOT (ATLAS-605).
+# `xargs -0` alone still assembles ONE command line, and Windows caps a process's command line
+# at 32767 characters. On a large staged change this died with "The command line is too long",
+# and the hook reported that as a PRETTIER failure - sending you to reformat a tree that was
+# already formatted. The first commit big enough to hit it was ATLAS-605's, at 198 files; every
+# smaller change had been passing for the wrong reason.
 pretty_files=$(echo "$staged" | grep -E '\.(ts|tsx|mjs|js|jsx|json|ya?ml|md|css)$' | grep -vE '^apps/(api|ingestion)/' || true)
 if [ -n "$pretty_files" ] && [ -d node_modules ] && command -v pnpm >/dev/null 2>&1; then
-  if ! echo "$pretty_files" | tr '\n' '\0' | xargs -0 pnpm exec prettier --check --ignore-unknown >/dev/null 2>&1; then
+  if ! echo "$pretty_files" | tr '\n' '\0' | xargs -0 -n 40 pnpm exec prettier --check --ignore-unknown --end-of-line auto >/dev/null 2>&1; then
     echo "pre-commit: prettier check failed - run 'pnpm format' and restage:" >&2
-    echo "$pretty_files" | tr '\n' '\0' | xargs -0 pnpm exec prettier --check --ignore-unknown 2>&1 | grep -v '^Checking' | head -10 >&2
+    echo "$pretty_files" | tr '\n' '\0' | xargs -0 -n 40 pnpm exec prettier --check --ignore-unknown --end-of-line auto 2>&1 | grep -v '^Checking' | head -10 >&2
     fail=1
   fi
 fi

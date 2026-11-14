@@ -26,8 +26,9 @@ Read the implementation plan and extract the block for id `$ARGUMENTS`:
 
 If the step id is not found, **stop** and tell the user. Quote the step's **Title**, **Repo**,
 **What**, **Governing**, **Depends on**, **Acceptance**, and **Verify** back so both of you
-agree on scope. If it is a release step (`REL`), follow `CONTRIBUTING.md` stages 6–8 instead of
-this command.
+agree on scope. If it is a release step (`REL`), follow `CONTRIBUTING.md` stages 6–7 instead of
+this command: a phase's REL cuts the release and signs it off on QA, and only `J11` goes on to
+stage 8, the one Prod promotion.
 
 **Then sanity-check the block against reality** — the plan is a living document and a block can
 go stale as earlier steps land: any **ticket numbers it references** (carried follow-ups,

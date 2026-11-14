@@ -15,3 +15,18 @@
 contract/** text eol=lf
 scenarios/** text eol=lf
 typescript/src/generated/** text eol=lf
+
+# THE CONTRACT IS SWEPT BY SCRIPTS, AND `* text=auto` ABOVE MADE THAT A TRAP (I2a,
+# ATLAS-592). With core.autocrlf=true this file checked out CRLF on Windows while its
+# blob stayed LF, so a Node sweep anchored on `\n` matched NOTHING and reported a clean
+# run having changed nothing - which is exactly what #534 records happening twice. The
+# blob is already LF, so this line changes no bytes; it stops the working tree and the
+# blob disagreeing, for every sweep after this one.
+packages/api-spec/openapi.yaml text eol=lf
+*.webp binary
+*.mp4 binary
+# A RECORDED RUN'S EVIDENCE IS ITS BYTES (J3e, ATLAS-722). Its report cites each snapshot's SHA-256, and
+# `* text=auto` would check the files out CRLF on Windows and change every hash. The blobs are LF as read.
+docs/performance/*/*.json text eol=lf
+docs/performance/*/*.txt text eol=lf
+apps/web/public/media/*.mp4 filter=lfs diff=lfs merge=lfs -text
